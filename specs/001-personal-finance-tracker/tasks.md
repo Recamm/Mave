@@ -49,17 +49,17 @@ Cada tarea usa `- [ ] Tnnn [P?] [USn?] descripción con rutas`. `[P]` indica tra
 
 ### Tests for User Story 1
 
-- [ ] T009 [P] [US1] Escribir pruebas de fecha local y captura de importe/moneda en `tests/unit/movements/movement-input.test.ts`; verificar que la fecha local se propone y se puede corregir, ARS es el valor inicial y solo se aceptan importes positivos en ARS o USD.
-- [ ] T010 [P] [US1] Escribir pruebas pgTAP que fallen para lecturas, escrituras y referencias entre dos propietarios en `supabase/tests/database/ledger-rls.test.sql`; cubrir categorías, cuentas financieras y movimientos sin confiar en filtros del cliente.
-- [ ] T011 [P] [US1] Escribir la prueba end-to-end del alta, primer gasto, consulta, edición, borrado y gestión de categorías en `tests/e2e/first-movement.spec.ts`; cubrir cuenta y nota opcionales, fecha propuesta, compra con tarjeta como gasto común, y categoría archivada conservada en el historial.
+- [X] T009 [P] [US1] Escribir pruebas de fecha local y captura de importe/moneda en `tests/unit/movements/movement-input.test.ts`; verificar que la fecha local se propone y se puede corregir, ARS es el valor inicial y solo se aceptan importes positivos en ARS o USD.
+- [X] T010 [P] [US1] Escribir pruebas pgTAP que fallen para lecturas, escrituras y referencias entre dos propietarios en `supabase/tests/database/ledger-rls.test.sql`; cubrir categorías, cuentas financieras y movimientos sin confiar en filtros del cliente.
+- [X] T011 [P] [US1] Escribir la prueba end-to-end del alta, primer gasto, consulta, edición, borrado y gestión de categorías en `tests/e2e/first-movement.spec.ts`; cubrir cuenta y nota opcionales, fecha propuesta, compra con tarjeta como gasto común, y categoría archivada conservada en el historial.
 
 ### Implementation for User Story 1
 
 - [ ] T012 [US1] Crear `supabase/migrations/0002_ledger_core.sql` con categorías privadas, cuentas financieras, movimientos y la tabla de transferencias necesaria para excluirlas de resúmenes. Aplicar RLS y grants mínimos. Conservar estas reglas del modelo: `kind` es `income` o `expense`; `amount` es `numeric` estrictamente mayor que cero; `currency` es `ARS` o `USD`; `category_id` pertenece al mismo propietario; `financial_account_id` es opcional; `note` es opcional; `opening_balance` es opcional y null se interpreta como cero; `source` es `default` o `custom`; una categoría archivada no se ofrece para asignaciones nuevas. Sembrar el catálogo inicial propio por usuario sin cambiar asignaciones históricas.
-- [ ] T013 [P] [US1] Implementar alta, confirmación de correo, inicio/cierre de sesión y recuperación con Supabase Auth en `src/features/auth/authService.ts` y `src/features/auth/AuthPage.tsx`; rechazar alta sin conexión y mantener la contraseña fuera de tablas de Mave.
-- [ ] T014 [P] [US1] Implementar lectura, creación, renombrado y archivo de categorías propias en `src/features/categories/categoryService.ts` y `src/features/categories/CategoryManager.tsx`; excluir archivadas de nuevas asignaciones y conservar sus referencias históricas.
-- [ ] T015 [P] [US1] Implementar persistencia online de movimientos con importes decimales como texto, fecha civil local, moneda, categoría y cuenta opcional en `src/features/movements/movementService.ts`; propagar errores de RLS y no duplicar validaciones monetarias con punto flotante.
-- [ ] T016 [US1] Implementar formulario y lista de movimientos con alta, consulta, edición y borrado en `src/features/movements/MovementForm.tsx` y `src/features/movements/MovementList.tsx`; proponer fecha local y ARS, permitir corregir la fecha y registrar compras con tarjeta como gastos comunes.
+- [X] T013 [P] [US1] Implementar alta, confirmación de correo, inicio/cierre de sesión y recuperación con Supabase Auth en `src/features/auth/authService.ts` y `src/features/auth/AuthPage.tsx`; rechazar alta sin conexión y mantener la contraseña fuera de tablas de Mave.
+- [X] T014 [P] [US1] Implementar lectura, creación, renombrado y archivo de categorías propias en `src/features/categories/categoryService.ts` y `src/features/categories/CategoryManager.tsx`; excluir archivadas de nuevas asignaciones y conservar sus referencias históricas.
+- [X] T015 [P] [US1] Implementar persistencia online de movimientos con importes decimales como texto, fecha civil local, moneda, categoría y cuenta opcional en `src/features/movements/movementService.ts`; propagar errores de RLS y no duplicar validaciones monetarias con punto flotante.
+- [X] T016 [US1] Implementar formulario y lista de movimientos con alta, consulta, edición y borrado en `src/features/movements/MovementForm.tsx` y `src/features/movements/MovementList.tsx`; proponer fecha local y ARS, permitir corregir la fecha y registrar compras con tarjeta como gastos comunes.
 
 **Checkpoint**: completar el Independent Test de US1 y los escenarios de `tests/e2e/first-movement.spec.ts` antes de iniciar integración de las historias dependientes.
 
@@ -73,15 +73,15 @@ Cada tarea usa `- [ ] Tnnn [P?] [USn?] descripción con rutas`. `[P]` indica tra
 
 ### Tests for User Story 2
 
-- [ ] T017 [P] [US2] Escribir pruebas unitarias que fallen para ingresos, gastos netos, diferencia, agrupación por categoría/moneda, período vacío y exclusión de transferencias en `tests/unit/summaries/period-summary.test.ts`; verificar que una devolución afecta su período de recepción y nunca cuenta como ingreso.
+- [X] T017 [P] [US2] Escribir pruebas unitarias que fallen para ingresos, gastos netos, diferencia, agrupación por categoría/moneda, período vacío y exclusión de transferencias en `tests/unit/summaries/period-summary.test.ts`; verificar que una devolución afecta su período de recepción y nunca cuenta como ingreso.
 - [ ] T018 [P] [US2] Escribir pruebas pgTAP que fallen para devoluciones propias y concurrentes en `supabase/tests/database/refunds.test.sql`; cubrir gasto padre obligatorio, devolución positiva, misma moneda/categoría/cuenta heredadas y rechazo de suma devuelta mayor al importe pendiente.
-- [ ] T019 [P] [US2] Escribir la prueba end-to-end del historial y resumen mensual en `tests/e2e/period-summary.spec.ts`; cubrir cambio de período, estado vacío, agrupación y devolución parcial.
+- [X] T019 [P] [US2] Escribir la prueba end-to-end del historial y resumen mensual en `tests/e2e/period-summary.spec.ts`; cubrir cambio de período, estado vacío, agrupación y devolución parcial.
 
 ### Implementation for User Story 2
 
-- [ ] T020 [US2] Crear `supabase/migrations/0003_refunds.sql` con la tabla y RPC transaccional `record_refund`. Conservar las restricciones del modelo: `amount` es `numeric` mayor que cero; `expense_id` referencia un gasto del mismo propietario; `received_on` determina el período que reduce; moneda, categoría y cuenta se derivan del gasto original; la suma de devoluciones activas no puede superar el importe del gasto. Serializar cambios concurrentes por gasto y hacer idempotentes los reintentos.
-- [ ] T021 [P] [US2] Implementar alta, consulta, edición y borrado de devoluciones vinculadas al gasto en `src/features/movements/refundService.ts` y `src/features/movements/RefundForm.tsx`; enviar solo importe positivo y fecha de recepción, y mostrar los datos heredados sin permitir alterarlos.
-- [ ] T022 [P] [US2] Implementar cálculo y consulta del resumen y el historial por período en `src/features/summaries/periodSummary.ts`, `src/features/summaries/summaryService.ts`, `src/features/summaries/PeriodSummary.tsx` y `src/features/summaries/MovementHistory.tsx`; separar ARS/USD, restar devoluciones recibidas en el período, excluir la tabla de transferencias y presentar un estado vacío claro.
+- [X] T020 [US2] Crear `supabase/migrations/0003_refunds.sql` con la tabla y RPC transaccional `record_refund`. Conservar las restricciones del modelo: `amount` es `numeric` mayor que cero; `expense_id` referencia un gasto del mismo propietario; `received_on` determina el período que reduce; moneda, categoría y cuenta se derivan del gasto original; la suma de devoluciones activas no puede superar el importe del gasto. Serializar cambios concurrentes por gasto y hacer idempotentes los reintentos.
+- [X] T021 [P] [US2] Implementar alta, consulta, edición y borrado de devoluciones vinculadas al gasto en `src/features/movements/refundService.ts` y `src/features/movements/RefundForm.tsx`; enviar solo importe positivo y fecha de recepción, y mostrar los datos heredados sin permitir alterarlos.
+- [X] T022 [P] [US2] Implementar cálculo y consulta del resumen y el historial por período en `src/features/summaries/periodSummary.ts`, `src/features/summaries/summaryService.ts`, `src/features/summaries/PeriodSummaryView.tsx` y `src/features/summaries/MovementHistory.tsx`; separar ARS/USD, restar devoluciones recibidas en el período, excluir la tabla de transferencias y presentar un estado vacío claro.
 
 **Checkpoint**: probar SC-003 y el Independent Test de US2 con el conjunto reproducible de `specs/001-personal-finance-tracker/quickstart.md`.
 

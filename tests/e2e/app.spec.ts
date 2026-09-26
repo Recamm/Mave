@@ -9,6 +9,7 @@ test('renders the app shell', async ({ page }) => {
 
 test('app shell has no automated accessibility violations', async ({ page }) => {
   await page.goto('/');
+  await expect(page.locator('.auth-panel')).toHaveCSS('opacity', '1');
 
   const results = await new AxeBuilder({ page }).analyze();
 

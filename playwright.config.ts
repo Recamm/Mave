@@ -20,6 +20,10 @@ export default defineConfig({
   ],
   webServer: {
     command: 'npm run dev -- --host 127.0.0.1 --port 4173 --strictPort',
+    env: {
+      VITE_SUPABASE_URL: 'http://127.0.0.1:54321',
+      VITE_SUPABASE_PUBLISHABLE_KEY: 'e2e-publishable-key',
+    },
     url: 'http://127.0.0.1:4173',
     reuseExistingServer: !isCI,
     timeout: 30_000,
