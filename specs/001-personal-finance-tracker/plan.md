@@ -21,13 +21,13 @@ decisiones y gates están en [research.md](research.md), [data-model.md](data-mo
 
 ## Technical Context
 
-**Language/Version**: TypeScript; fijar Node.js LTS, TypeScript y matriz de navegadores al crear el scaffold. Importes cruzan la frontera cliente/servidor como texto decimal.
+**Language/Version**: TypeScript `^5.9.2`; Node.js `>=22.12.0` (CI ejecuta Node 24). Importes cruzan la frontera cliente/servidor como texto decimal.
 
-**Primary Dependencies**: React, Vite y `@supabase/supabase-js`; APIs del navegador para IndexedDB, service worker e instalación PWA. Pruebas previstas con Vitest, Testing Library, Playwright y Supabase CLI/pgTAP; versiones y scripts se fijan con el scaffold. Sin SSR ni backend de aplicación propio.
+**Primary Dependencies**: React 19, React Router 7, Vite 7 y `@supabase/supabase-js`; APIs del navegador para IndexedDB, service worker e instalación PWA. El lockfile fija las resoluciones y `package.json` define los scripts. Sin SSR ni backend de aplicación propio.
 
 **Storage**: Supabase Postgres (`numeric`) como fuente canónica; IndexedDB para outbox y estado local asociado al usuario. La escala decimal y el tratamiento de precisión adicional deben decidirse antes de implementar. El service worker cachea shell/assets, no respuestas financieras.
 
-**Testing**: reglas financieras y sincronización unitarias; constraints, grants y RLS en Supabase local con pruebas negativas entre dos cuentas; flujos principales end-to-end; Safari real de iPhone, teclado/tecnología de asistencia y restauración ensayada antes de testers.
+**Testing**: Vitest 4 y Testing Library para reglas unitarias; Playwright 1 con axe para E2E; constraints, grants y RLS en Supabase local con pruebas negativas entre dos cuentas; Safari real de iPhone, teclado/tecnología de asistencia y restauración ensayada antes de testers.
 
 **Target Platform**: PWA instalable desde Safari en iPhone y web responsive en navegadores actuales de escritorio. HTTPS estático portable. La sincronización ocurre al abrir/volver a primer plano; no se garantiza con la app cerrada en iOS.
 
@@ -105,8 +105,9 @@ tests/
 flujos funcionales. `supabase/migrations` contiene el esquema, RLS y RPC;
 `supabase/functions` contiene solo el worker de eliminación programada, no una
 API general. Las pruebas de base de datos quedan junto a Supabase y las de
-cliente bajo `tests/`. Es una estructura prevista: esta fase solo crea
-documentación y no scaffolding.
+cliente bajo `tests/`. Setup ya materializa el shell de React, las herramientas
+compartidas y la configuración local de Supabase; las funciones, migraciones y
+pruebas de dominio se incorporan en fases posteriores.
 
 ## Complexity Tracking
 

@@ -11,6 +11,12 @@ build/
 coverage/
 .next/
 out/
+playwright-report/
+test-results/
+
+# Supabase local state
+supabase/.branches/
+supabase/.temp/
 
 # Python and local virtual environments
 __pycache__/

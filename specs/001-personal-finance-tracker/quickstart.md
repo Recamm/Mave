@@ -2,11 +2,11 @@
 
 ## Estado actual
 
-Esta guía define cómo validar la implementación prevista; no es ejecutable en el repositorio en su estado actual. Al redactarla hay artefactos Spec Kit, pero todavía no existen `package.json`, código de aplicación, migraciones Supabase ni pruebas. La fase de implementación debe crear esos elementos y fijar versiones exactas de Node, scripts npm y comandos locales antes de dar esta guía por operativa.
+Esta guía es parcialmente ejecutable tras completar Setup. Ya existen el shell React/Vite, los scripts npm, las pruebas smoke, CI y la configuración local de Supabase. Aún faltan los flujos funcionales, las migraciones y las pruebas de base de datos; sus comandos y escenarios quedan pendientes de las fases correspondientes.
 
 ## Requisitos previos de implementación
 
-- Node.js en la versión LTS que se fije al iniciar implementación y el gestor de paquetes indicado por el lockfile.
+- Node.js `>=22.12.0` y el gestor de paquetes indicado por el lockfile; CI usa Node 24.
 - Supabase CLI y Docker si se ejecuta el stack local de Supabase.
 - Navegador de escritorio actual y Safari en un iPhone real para validar instalación, persistencia y uso offline.
 - Proyecto Supabase de prueba separado del proyecto de producción.
@@ -14,19 +14,21 @@ Esta guía define cómo validar la implementación prevista; no es ejecutable en
 
 ## Configuración y ejecución local
 
-Los nombres exactos de scripts se fijarán al generar el scaffolding. Se propone mantener esta secuencia y materializar los comandos en `package.json` y la configuración Supabase:
+Los scripts npm están definidos en `package.json`. Para validar el scaffold:
 
 ```powershell
 npm ci
-supabase start
-supabase db reset
-supabase test db
-npm run test
+npx playwright install chromium
+npm run lint
+npm run format:check
+npm run typecheck
+npm test
 npm run build
+npm run test:e2e
 npm run dev
 ```
 
-La implementación debe agregar pruebas unitarias de reglas financieras y sync; pruebas de base de datos para constraints, grants y RLS; y pruebas end-to-end para los flujos principales. Si los scripts se nombran distinto, actualizar esta guía y conservar la cobertura descrita abajo. No ejecutar contra datos reales `supabase db reset`.
+Los comandos `supabase start`, `supabase db reset` y `supabase test db` se habilitan al incorporar migraciones y pruebas de base de datos. Ejecutarlos solo contra el stack local/de prueba; nunca ejecutar `supabase db reset` contra datos reales. Las fases posteriores deben agregar pruebas de reglas financieras, sync, constraints, grants, RLS y flujos de producto.
 
 Configurar el entorno local con la URL Supabase y la publishable key, por ejemplo `VITE_SUPABASE_URL` y `VITE_SUPABASE_PUBLISHABLE_KEY`. Son valores destinados al cliente y solo son seguros junto con RLS y grants correctos. No agregar `service_role`, claves secretas ni credenciales SMTP a variables `VITE_*`, al bundle o al repositorio. Las credenciales administrativas de la función programada se configuran como secretos del entorno server-side de Supabase. Mantener `.env.local` fuera del control de versiones.
 
@@ -41,6 +43,8 @@ Configurar el entorno local con la URL Supabase y la publishable key, por ejempl
 
 ### 2. Exactitud y reglas financieras
 
+Los importes ARS/USD aceptan como máximo 2 posiciones decimales. Las entradas con más decimales se rechazan explícitamente; no se redondean.
+
 Cargar un conjunto reproducible con fechas de un mismo período y verificarlo contra cálculo manual:
 
 | Moneda | Ingresos del período | Gastos fechados en el período | Devoluciones recibidas en el período | Transferencias |
@@ -52,7 +56,7 @@ Resultado esperado: ingresos ARS 1000.00, gastos netos ARS 200.00 y diferencia n
 
 Para saldos, partir de una cuenta ARS con saldo inicial 1000.00; asociar ingreso 500.00, gasto 300.00, devolución 100.00 y transferencia enviada 200.00. Resultado esperado: 1100.00 en origen y 200.00 acreditados al destino. Una devolución que excede lo aún no devuelto, transferencia entre monedas distintas, entre cuentas ajenas o a la misma cuenta debe rechazarse sin escrituras parciales. Registrar aporte a una meta y comprobar que no cambia ningún saldo.
 
-Repetir con importes que ejerciten la escala acordada y valores mayores que la precisión aceptada. El resultado debe ser exacto o rechazarse explícitamente según la política de escala; no redondear silenciosamente.
+Repetir con importes que ejerciten la escala de 2 decimales y valores con mayor precisión. El resultado debe ser exacto; las entradas con más de 2 decimales se rechazan explícitamente y no se redondean.
 
 ### 3. Offline, reintentos y logout
 

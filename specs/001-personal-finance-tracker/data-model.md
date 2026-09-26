@@ -9,7 +9,7 @@ Este es un modelo lógico de diseño, no un esquema SQL ni una migración. Postg
 - Las referencias entre entidades privadas deben validar también el mismo `user_id`, idealmente mediante claves foráneas compuestas, además de RLS.
 - Las monedas admitidas son `ARS` y `USD`. Cada importe se conserva en su moneda y nunca se convierte automáticamente.
 - Los importes canónicos usan PostgreSQL `numeric`, nunca `real`, `double precision` ni aritmética de dinero con `Number` de JavaScript. El cliente envía y recibe importes como texto decimal para no perder precisión durante la serialización.
-- La escala máxima aceptada y la política para decimales adicionales (rechazar o redondear) quedan como decisión previa a implementar; no declarar una escala que la spec no fijó. La exportación JSON conserva importes como texto decimal y CSV como texto decimal de planilla.
+- La escala máxima aceptada para importes ARS/USD es de 2 posiciones decimales. Las entradas con más de 2 decimales se rechazan; no se redondean. La exportación JSON conserva importes como texto decimal y CSV como texto decimal de planilla.
 - Las fechas financieras son fechas civiles (`date`, `YYYY-MM-DD`) en el calendario local, no timestamps convertidos por zona horaria. Las marcas de auditoría y sync usan timestamps del servidor con zona horaria.
 - Los resúmenes son proyecciones derivadas de los registros; no guardar totales acumulados como una segunda fuente de verdad sin una estrategia de reconciliación.
 

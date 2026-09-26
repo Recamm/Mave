@@ -109,7 +109,7 @@
 
 ## Pendientes que bloquean testers o implementación
 
-- Definir escala decimal y comportamiento ante precisión adicional, sin usar punto flotante.
+- Validar mediante pruebas que los importes ARS/USD acepten hasta 2 decimales y rechacen entradas más precisas, sin redondeo ni punto flotante.
 - Probar grants y RLS por tabla y operación con pruebas negativas entre dos cuentas.
 - Probar reintentos idempotentes, conflictos abiertos/resueltos y logout con una outbox no vacía.
 - Definir y probar la expiración de solicitudes, denegación de sync al vencimiento y borrado Auth/data con credenciales solo server-side.

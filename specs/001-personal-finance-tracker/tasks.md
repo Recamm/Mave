@@ -15,15 +15,15 @@ description: "Lista de tareas para implementar Mave"
 
 ## Formato y rutas
 
-Cada tarea usa `- [ ] Tnnn [P?] [USn?] descripción con rutas`. `[P]` indica trabajo que puede ejecutarse en paralelo sobre archivos distintos y sin dependencias incompletas. `[USn]` corresponde a las siete historias de `spec.md`. Se usa el árbol previsto en `plan.md`: `src/`, `tests/` y `supabase/` en la raíz. Todavía no existen código, migraciones ni manifiestos; esta lista los planifica, no los crea.
+Cada tarea usa `- [ ] Tnnn [P?] [USn?] descripción con rutas`. `[P]` indica trabajo que puede ejecutarse en paralelo sobre archivos distintos y sin dependencias incompletas. `[USn]` corresponde a las siete historias de `spec.md`. Se usa el árbol previsto en `plan.md`: `src/`, `tests/` y `supabase/` en la raíz. Setup materializa el shell, las herramientas compartidas y la configuración local; las migraciones, los manifiestos y los flujos de producto se crean en fases posteriores.
 
 ## Phase 1: Setup
 
 **Propósito**: inicializar la SPA y las herramientas locales compartidas.
 
-- [ ] T001 Inicializar el proyecto estático React, TypeScript y Vite con `package.json`, `index.html`, `vite.config.ts`, `tsconfig.json`, `src/main.tsx` y `src/app/App.tsx`; añadir scripts `dev`, `build` y `typecheck`.
-- [ ] T002 Configurar lint, formato y pruebas con ESLint, Prettier, Vitest, Testing Library, Playwright y `@axe-core/playwright` en `package.json`, `eslint.config.js`, `prettier.config.js`, `vitest.config.ts`, `playwright.config.ts`, `tests/setup.ts` y `.github/workflows/ci.yml`; definir scripts repetibles de test y build.
-- [ ] T003 [P] Configurar Supabase local y variables de cliente no secretas en `supabase/config.toml`, `.env.example` y `.gitignore`; documentar `VITE_SUPABASE_URL` y `VITE_SUPABASE_PUBLISHABLE_KEY`, y excluir `.env.local` y toda clave administrativa.
+- [X] T001 Inicializar el proyecto estático React, TypeScript y Vite con `package.json`, `index.html`, `vite.config.ts`, `tsconfig.json`, `src/main.tsx` y `src/app/App.tsx`; añadir scripts `dev`, `build` y `typecheck`.
+- [X] T002 Configurar lint, formato y pruebas con ESLint, Prettier, Vitest, Testing Library, Playwright y `@axe-core/playwright` en `package.json`, `eslint.config.js`, `prettier.config.js`, `vitest.config.ts`, `playwright.config.ts`, `tests/setup.ts` y `.github/workflows/ci.yml`; definir scripts repetibles de test y build.
+- [X] T003 [P] Configurar Supabase local y variables de cliente no secretas en `supabase/config.toml`, `.env.example` y `.gitignore`; documentar `VITE_SUPABASE_URL` y `VITE_SUPABASE_PUBLISHABLE_KEY`, y excluir `.env.local` y toda clave administrativa.
 
 ---
 
@@ -31,11 +31,11 @@ Cada tarea usa `- [ ] Tnnn [P?] [USn?] descripción con rutas`. `[P]` indica tra
 
 **Propósito**: resolver la única decisión de datos que bloquea importes y preparar servicios comunes antes de las historias.
 
-- [ ] T004 Confirmar con la persona responsable de producto la escala decimal máxima y si se rechaza o redondea una entrada con más decimales; registrar la decisión en `specs/001-personal-finance-tracker/data-model.md` y `specs/001-personal-finance-tracker/quickstart.md` antes de implementar parsers monetarios.
-- [ ] T005 [P] Escribir pruebas unitarias que fallen para parseo decimal desde texto, suma/comparación exactas, serialización y el comportamiento de precisión acordado en `tests/unit/money/decimal.test.ts`.
-- [ ] T006 Implementar operaciones decimales exactas con `big.js` en `src/lib/money/decimal.ts`, guardar los importes como texto en las fronteras JSON y añadir la dependencia en `package.json`; satisfacer las pruebas de `tests/unit/money/decimal.test.ts` sin usar `Number` para aritmética monetaria.
-- [ ] T007 [P] Crear el cliente tipado de Supabase y el proveedor de sesión en `src/lib/supabase/client.ts`, `src/lib/supabase/database.types.ts` y `src/app/AuthSessionProvider.tsx`; leer solo URL y publishable key del cliente, nunca una clave secreta.
-- [ ] T008 Implementar rutas base, estado de sesión y mensajes de error accesibles en `src/app/App.tsx`, `src/app/routes.tsx`, `src/app/components/FeedbackMessage.tsx` y `src/lib/errors.ts`; no incluir importes, notas ni payloads financieros en logs de diagnóstico.
+- [X] T004 Confirmar con la persona responsable de producto la escala decimal máxima y si se rechaza o redondea una entrada con más decimales; registrar la decisión en `specs/001-personal-finance-tracker/data-model.md` y `specs/001-personal-finance-tracker/quickstart.md` antes de implementar parsers monetarios.
+- [X] T005 [P] Escribir pruebas unitarias que fallen para parseo decimal desde texto, suma/comparación exactas, serialización y el comportamiento de precisión acordado en `tests/unit/money/decimal.test.ts`.
+- [X] T006 Implementar operaciones decimales exactas con `big.js` en `src/lib/money/decimal.ts`, guardar los importes como texto en las fronteras JSON y añadir la dependencia en `package.json`; satisfacer las pruebas de `tests/unit/money/decimal.test.ts` sin usar `Number` para aritmética monetaria.
+- [X] T007 [P] Crear el cliente tipado de Supabase y el proveedor de sesión en `src/lib/supabase/client.ts`, `src/lib/supabase/database.types.ts` y `src/app/AuthSessionProvider.tsx`; leer solo URL y publishable key del cliente, nunca una clave secreta.
+- [X] T008 Implementar rutas base, estado de sesión y mensajes de error accesibles en `src/app/App.tsx`, `src/app/routes.tsx`, `src/app/components/FeedbackMessage.tsx` y `src/lib/errors.ts`; no incluir importes, notas ni payloads financieros en logs de diagnóstico.
 
 **Checkpoint**: la SPA compila, las pruebas corren localmente, el cliente no contiene secretos y la política de precisión quedó acordada antes de crear operaciones monetarias.
 
