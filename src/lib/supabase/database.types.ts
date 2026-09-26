@@ -118,6 +118,65 @@ export type Database = {
         };
         Relationships: [];
       };
+      goals: {
+        Row: {
+          created_at: string;
+          currency: 'ARS' | 'USD';
+          id: string;
+          name: string;
+          target_amount: number;
+          target_amount_text: string;
+          target_date: string | null;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          currency: 'ARS' | 'USD';
+          id?: string;
+          name: string;
+          target_amount: string;
+          target_date?: string | null;
+          user_id?: string;
+        };
+        Update: {
+          created_at?: string;
+          currency?: 'ARS' | 'USD';
+          id?: string;
+          name?: string;
+          target_amount?: string;
+          target_date?: string | null;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      goal_contributions: {
+        Row: {
+          amount: number;
+          amount_text: string;
+          contributed_on: string;
+          created_at: string;
+          goal_id: string;
+          id: string;
+          user_id: string;
+        };
+        Insert: {
+          amount: string;
+          contributed_on: string;
+          created_at?: string;
+          goal_id: string;
+          id?: string;
+          user_id?: string;
+        };
+        Update: {
+          amount?: string;
+          contributed_on?: string;
+          created_at?: string;
+          goal_id?: string;
+          id?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       movements: {
         Row: {
           amount: number;

@@ -960,6 +960,204 @@ a:focus-visible {
   font-size: 0.9rem;
 }
 
+.goals-page__layout {
+  display: grid;
+  grid-template-columns: minmax(17rem, 0.72fr) minmax(0, 1.28fr);
+  align-items: start;
+  gap: 2rem;
+}
+
+.goal-editor {
+  padding: 1.2rem;
+  border: 1px solid var(--color-line);
+  border-top: 3px solid var(--color-green);
+  background: var(--color-paper);
+}
+
+.goal-editor__heading,
+.goal-list-panel__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.goal-editor__heading {
+  margin-bottom: 1rem;
+}
+
+.goal-editor__heading h2,
+.goal-list-panel__heading h2 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.goal-editor form {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.goal-editor label,
+.goal-contribution-form label {
+  margin-top: 0.25rem;
+  color: #33463b;
+  font-size: 0.83rem;
+  font-weight: 650;
+}
+
+.goal-editor form > button {
+  margin-top: 0.4rem;
+}
+
+.goal-editor__feedback,
+.goal-contribution-form__feedback {
+  margin: 0.2rem 0;
+  font-size: 0.84rem;
+}
+
+.goal-editor__feedback--error,
+.goal-contribution-form__feedback--error {
+  color: #88392f;
+}
+
+.goal-editor__feedback--success,
+.goal-contribution-form__feedback--success {
+  color: #145538;
+}
+
+.goal-list-panel {
+  min-width: 0;
+}
+
+.goal-list-panel__heading {
+  padding: 0.35rem 0 0.9rem;
+  border-bottom: 1px solid var(--color-line);
+}
+
+.goal-list-panel__heading > span {
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.goal-list-panel__empty {
+  padding: 1rem 0;
+  color: var(--color-muted);
+}
+
+.savings-goal-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.savings-goal {
+  min-width: 0;
+  padding: 1.15rem 0;
+  border-bottom: 1px solid var(--color-line);
+}
+
+.savings-goal__heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0.75rem 1rem;
+}
+
+.savings-goal__heading h3 {
+  overflow-wrap: anywhere;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+}
+
+.savings-goal__heading > div > p,
+.savings-goal__totals {
+  margin: 0.3rem 0 0;
+  color: var(--color-muted);
+  font-size: 0.8rem;
+}
+
+.savings-goal__totals {
+  display: grid;
+  justify-items: end;
+  gap: 0.2rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.savings-goal__totals strong {
+  color: var(--color-ink);
+  font-size: 0.95rem;
+}
+
+.savings-goal__progress {
+  display: block;
+  width: 100%;
+  height: 0.65rem;
+  margin: 0.8rem 0 1rem;
+  accent-color: var(--color-green);
+}
+
+.goal-contribution-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: end;
+  gap: 0.45rem 0.7rem;
+  padding: 0.85rem 0;
+  border-top: 1px solid var(--color-line);
+  border-bottom: 1px solid var(--color-line);
+}
+
+.goal-contribution-form label {
+  align-self: end;
+}
+
+.goal-contribution-form input,
+.goal-contribution-form__feedback,
+.goal-contribution-form button {
+  grid-column: 1 / -1;
+}
+
+.goal-contribution-form button {
+  justify-self: start;
+}
+
+.savings-goal__contributions {
+  padding-top: 0.85rem;
+}
+
+.savings-goal__contributions h4 {
+  margin: 0 0 0.4rem;
+  font-size: 0.85rem;
+}
+
+.savings-goal__contributions ol {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.savings-goal__contributions li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: var(--color-muted);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.savings-goal__contributions li strong {
+  color: var(--color-ink);
+}
+
+.savings-goal__contributions > p {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.8rem;
+}
+
 @keyframes enter-ledger {
   from {
     opacity: 0;
@@ -998,6 +1196,11 @@ a:focus-visible {
   }
 
   .accounts-page__grid {
+    grid-template-columns: 1fr;
+    gap: 1.75rem;
+  }
+
+  .goals-page__layout {
     grid-template-columns: 1fr;
     gap: 1.75rem;
   }
@@ -1049,6 +1252,14 @@ a:focus-visible {
     align-items: flex-start;
     grid-template-columns: minmax(0, 1fr);
     gap: 0.4rem;
+  }
+
+  .savings-goal__heading {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .savings-goal__totals {
+    justify-items: start;
   }
 
   .movement-row__actions {

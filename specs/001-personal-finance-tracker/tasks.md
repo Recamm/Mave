@@ -140,13 +140,13 @@ Cada tarea usa `- [ ] Tnnn [P?] [USn?] descripción con rutas`. `[P]` indica tra
 ### Tests for User Story 5
 
 - [ ] T035 [P] [US5] Escribir pruebas pgTAP que fallen para metas y aportes en `supabase/tests/database/goals.test.sql`; cubrir dueño, `target_amount` positivo, `currency` ARS/USD, fecha opcional, aporte positivo y moneda heredada de la meta.
-- [ ] T036 [P] [US5] Escribir la prueba end-to-end que falle para crear meta, agregar aporte y comprobar progreso en `tests/e2e/goals.spec.ts`; verificar que no cambia movimientos ni saldos de cuentas.
+- [X] T036 [P] [US5] Escribir la prueba end-to-end que falle para crear meta, agregar aporte y comprobar progreso en `tests/e2e/goals.spec.ts`; verificar que no cambia movimientos ni saldos de cuentas.
 
 ### Implementation for User Story 5
 
-- [ ] T037 [US5] Crear `supabase/migrations/0006_goals.sql` con tablas RLS de metas y aportes; conservar las reglas del modelo: meta con nombre, `target_amount` `numeric` mayor que cero, moneda `ARS` o `USD` y fecha opcional; aporte con importe `numeric` mayor que cero, `goal_id` del mismo propietario y moneda heredada de la meta. Los aportes no generan movimientos ni cambian saldos.
-- [ ] T038 [US5] Implementar persistencia y progreso derivado de meta en `src/features/goals/goalService.ts`; sumar aportes activos con aritmética exacta y sin escribir en movimientos o cuentas.
-- [ ] T039 [US5] Implementar vistas y formularios de metas/aportes en `src/features/goals/GoalsPage.tsx` y `src/features/goals/GoalContributionForm.tsx`; permitir fecha objetivo opcional y mostrar moneda y progreso sin conversión automática.
+- [X] T037 [US5] Crear `supabase/migrations/0006_goals.sql` con tablas RLS de metas y aportes; conservar las reglas del modelo: meta con nombre, `target_amount` `numeric` mayor que cero, moneda `ARS` o `USD` y fecha opcional; aporte con importe `numeric` mayor que cero, `goal_id` del mismo propietario y moneda heredada de la meta. Los aportes no generan movimientos ni cambian saldos.
+- [X] T038 [US5] Implementar persistencia y progreso derivado de meta en `src/features/goals/goalService.ts`; sumar aportes activos con aritmética exacta y sin escribir en movimientos o cuentas.
+- [X] T039 [US5] Implementar vistas y formularios de metas/aportes en `src/features/goals/GoalsPage.tsx` y `src/features/goals/GoalContributionForm.tsx`; permitir fecha objetivo opcional y mostrar moneda y progreso sin conversión automática.
 
 **Checkpoint**: completar `tests/e2e/goals.spec.ts` y las pruebas de invariantes de `supabase/tests/database/goals.test.sql`.
 
