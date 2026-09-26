@@ -14,6 +14,34 @@ type RefundRow = {
   version: number;
 };
 
+type MovementConflictRow = {
+  chosen_revision_id: string | null;
+  id: string;
+  movement_id: string;
+  opened_at: string;
+  resolved_at: string | null;
+  status: 'open' | 'resolved';
+  user_id: string;
+};
+
+type MovementConflictRevisionRow = {
+  action: 'create' | 'update' | 'delete';
+  amount: number;
+  amount_text: string;
+  captured_at: string;
+  category_id: string;
+  conflict_id: string;
+  currency: 'ARS' | 'USD';
+  expected_version: number;
+  financial_account_id: string | null;
+  id: string;
+  kind: 'income' | 'expense';
+  note: string | null;
+  occurred_on: string;
+  source: 'server' | 'client';
+  user_id: string;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -130,6 +158,64 @@ export type Database = {
         };
         Relationships: [];
       };
+      movement_conflicts: {
+        Row: MovementConflictRow;
+        Insert: {
+          chosen_revision_id?: string | null;
+          id?: string;
+          movement_id: string;
+          opened_at?: string;
+          resolved_at?: string | null;
+          status?: 'open' | 'resolved';
+          user_id?: string;
+        };
+        Update: {
+          chosen_revision_id?: string | null;
+          id?: string;
+          movement_id?: string;
+          opened_at?: string;
+          resolved_at?: string | null;
+          status?: 'open' | 'resolved';
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      movement_conflict_revisions: {
+        Row: MovementConflictRevisionRow;
+        Insert: {
+          action: 'create' | 'update' | 'delete';
+          amount: string;
+          captured_at?: string;
+          category_id: string;
+          conflict_id: string;
+          currency: 'ARS' | 'USD';
+          expected_version: number;
+          financial_account_id?: string | null;
+          id?: string;
+          kind: 'income' | 'expense';
+          note?: string | null;
+          occurred_on: string;
+          source: 'server' | 'client';
+          user_id?: string;
+        };
+        Update: {
+          action?: 'create' | 'update' | 'delete';
+          amount?: string;
+          captured_at?: string;
+          category_id?: string;
+          conflict_id?: string;
+          currency?: 'ARS' | 'USD';
+          expected_version?: number;
+          financial_account_id?: string | null;
+          id?: string;
+          kind?: 'income' | 'expense';
+          note?: string | null;
+          occurred_on?: string;
+          source?: 'server' | 'client';
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       refunds: {
         Row: RefundRow;
         Insert: {
@@ -206,6 +292,24 @@ export type Database = {
           p_refund_id: string | null;
         };
         Returns: RefundRow;
+      };
+      apply_movement_change: {
+        Args: {
+          p_action: 'create' | 'update' | 'delete';
+          p_expected_version: number | null;
+          p_movement_id: string;
+          p_operation_id: string;
+          p_payload: Json | null;
+        };
+        Returns: Json;
+      };
+      resolve_movement_conflict: {
+        Args: {
+          p_conflict_id: string;
+          p_operation_id: string;
+          p_revision_id: string;
+        };
+        Returns: Json;
       };
     };
     Enums: { [_ in never]: never };

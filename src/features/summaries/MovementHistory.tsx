@@ -138,6 +138,9 @@ export function MovementHistory({
                     {formatCivilDate(entry.movement.occurred_on)}
                   </time>
                   {entry.movement.note ? <span>{entry.movement.note}</span> : null}
+                  <span aria-label="Estado de sincronización" className="movement-row__sync-status">
+                    {syncStatusLabel(entry.movement.syncStatus ?? 'synced')}
+                  </span>
                 </div>
                 <div className="movement-row__actions">
                   <strong className="movement-row__amount">
@@ -195,6 +198,23 @@ export function MovementHistory({
       )}
     </section>
   );
+}
+
+function syncStatusLabel(status: NonNullable<Movement['syncStatus']>): string {
+  switch (status) {
+    case 'pending':
+      return 'Solo en este dispositivo';
+    case 'sending':
+      return 'Sincronizando';
+    case 'retry':
+      return 'Reintento pendiente';
+    case 'conflict':
+      return 'Requiere atención';
+    case 'blocked':
+      return 'Sincronización bloqueada';
+    case 'synced':
+      return 'Sincronizado';
+  }
 }
 
 function RefundManager({

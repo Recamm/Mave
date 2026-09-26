@@ -55,25 +55,25 @@ select lives_ok(
   $$,
   'owner one can create a financial account'
 );
-select lives_ok(
+select is(
   $$
-    insert into public.movements (
-      id,
-      kind,
-      amount,
-      currency,
-      category_id,
-      occurred_on
-    )
-    values (
-      '30000000-0000-0000-0000-000000000001',
-      'expense',
-      1250.50,
-      'ARS',
-      current_setting('test.owner_one_category')::uuid,
-      date '2026-09-26'
-    )
+    select public.apply_movement_change(
+      p_action := 'create',
+      p_operation_id := '40000000-0000-0000-0000-000000000001',
+      p_movement_id := '30000000-0000-0000-0000-000000000001',
+      p_expected_version := null,
+      p_payload := jsonb_build_object(
+        'kind', 'expense',
+        'amount', '1250.50',
+        'currency', 'ARS',
+        'category_id', current_setting('test.owner_one_category'),
+        'occurred_on', '2026-09-26',
+        'financial_account_id', null,
+        'note', null
+      )
+    )->'movement'->>'id'
   $$,
+  '30000000-0000-0000-0000-000000000001',
   'owner one can create a movement in their own category'
 );
 
@@ -110,33 +110,37 @@ select is(
   0,
   'owner two cannot read owner one movements'
 );
-select lives_ok(
+select throws_ok(
   $$
     update public.movements
     set note = 'unauthorized update'
     where id = '30000000-0000-0000-0000-000000000001'
   $$,
-  'owner two cannot update a hidden movement'
+  '42501',
+  null,
+  'owner two cannot write movements outside the sync transaction'
 );
 select throws_ok(
   $$
-    insert into public.movements (
-      kind,
-      amount,
-      currency,
-      category_id,
-      occurred_on
-    )
-    values (
-      'expense',
-      1.00,
-      'ARS',
-      current_setting('test.owner_one_category')::uuid,
-      date '2026-09-26'
+    select public.apply_movement_change(
+      p_action := 'create',
+      p_operation_id := '40000000-0000-0000-0000-000000000002',
+      p_movement_id := '30000000-0000-0000-0000-000000000002',
+      p_expected_version := null,
+      p_payload := jsonb_build_object(
+        'kind', 'expense',
+        'amount', '1.00',
+        'currency', 'ARS',
+        'category_id', current_setting('test.owner_one_category'),
+        'occurred_on', '2026-09-26',
+        'financial_account_id', null,
+        'note', null
+      )
     )
   $$,
   '23514',
-  'owner two cannot reference owner one category'
+  'Movement category is unavailable for new assignments.',
+  'owner two cannot reference owner one category through sync'
 );
 
 reset role;

@@ -35,7 +35,9 @@ export type Movement = Pick<
   | 'updated_at'
   | 'user_id'
   | 'version'
-> & { amount: string };
+> & { amount: string; syncStatus?: MovementSyncStatus };
+
+export type MovementSyncStatus = 'synced' | 'pending' | 'sending' | 'retry' | 'conflict' | 'blocked';
 
 export type FinancialAccountOption = Pick<FinancialAccountRow, 'currency' | 'id' | 'name'>;
 
@@ -48,7 +50,7 @@ const movementPageSize = 500;
 
 function mapMovement(row: MovementSelectRow): Movement {
   const { amount_text: amount, ...movement } = row;
-  return { ...movement, amount };
+  return { ...movement, amount, syncStatus: 'synced' };
 }
 
 export function createMovementService(clientProvider: MovementClientProvider = getSupabaseClient) {

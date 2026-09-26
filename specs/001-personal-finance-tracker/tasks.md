@@ -95,16 +95,16 @@ Cada tarea usa `- [ ] Tnnn [P?] [USn?] descripción con rutas`. `[P]` indica tra
 
 ### Tests for User Story 3
 
-- [ ] T023 [P] [US3] Escribir pruebas unitarias que fallen para persistencia, partición por propietario, estados, reintentos y deduplicación de la outbox en `tests/unit/sync/outbox.test.ts`.
+- [X] T023 [P] [US3] Escribir pruebas unitarias que fallen para persistencia, partición por propietario, estados, reintentos y deduplicación de la outbox en `tests/unit/sync/outbox.test.ts`.
 - [ ] T024 [P] [US3] Escribir pruebas pgTAP que fallen para `client_operation_id`, concurrencia optimista, snapshots y resolución de conflictos en `supabase/tests/database/movement-sync.test.sql`; verificar que un conflicto abierto cuenta el movimiento una sola vez.
-- [ ] T025 [P] [US3] Escribir pruebas end-to-end que fallen para captura offline, recarga, reconexión, reintentos y logout con pendientes en `tests/e2e/offline-sync.spec.ts`; verificar que otra cuenta no puede ver ni enviar la outbox.
+- [X] T025 [P] [US3] Escribir pruebas end-to-end que fallen para captura offline, recarga, reconexión, reintentos y logout con pendientes en `tests/e2e/offline-sync.spec.ts`; verificar que otra cuenta no puede ver ni enviar la outbox.
 
 ### Implementation for User Story 3
 
 - [ ] T026 [US3] Crear `supabase/migrations/0004_sync_conflicts.sql` con operaciones idempotentes, revisiones optimistas y snapshots inmutables del movimiento en conflicto. Conservar las reglas del modelo: el conflicto tiene estado `open` o `resolved`, snapshots de versiones incompatibles y una elección; los snapshots alternativos abiertos no se agregan a resúmenes; solo la versión elegida afecta saldos; no sobrescribir ni descartar cambios en silencio. Restringir filas y funciones al propietario.
-- [ ] T027 [P] [US3] Implementar la outbox IndexedDB en `src/features/sync/outbox.ts`, particionada por propietario y operación UUID estable; conservar `expected_version`, importes como texto y estados `pending`, `sending`, `retry`, `conflict` o `blocked`; no reasignar pendientes a la siguiente cuenta del dispositivo.
-- [ ] T028 [US3] Implementar sincronización idempotente y detección de versiones incompatibles en `src/features/sync/syncEngine.ts`; ejecutar al abrir o volver a primer plano, actualizar el estado visible y no prometer trabajo en segundo plano con la PWA cerrada en iOS.
-- [ ] T029 [US3] Implementar comparación/elección explícita de versiones y advertencia de logout con pendientes en `src/features/sync/ConflictResolver.tsx` y `src/features/auth/logoutService.ts`; preservar ambas versiones hasta la elección, contar una sola y ocultar la outbox a cualquier otra cuenta.
+- [X] T027 [P] [US3] Implementar la outbox IndexedDB en `src/features/sync/outbox.ts`, particionada por propietario y operación UUID estable; conservar `expected_version`, importes como texto y estados `pending`, `sending`, `retry`, `conflict` o `blocked`; no reasignar pendientes a la siguiente cuenta del dispositivo.
+- [X] T028 [US3] Implementar sincronización idempotente y detección de versiones incompatibles en `src/features/sync/syncEngine.ts`; ejecutar al abrir o volver a primer plano, actualizar el estado visible y no prometer trabajo en segundo plano con la PWA cerrada en iOS.
+- [X] T029 [US3] Implementar comparación/elección explícita de versiones y advertencia de logout con pendientes en `src/features/sync/ConflictResolver.tsx` y `src/features/auth/logoutService.ts`; preservar ambas versiones hasta la elección, contar una sola y ocultar la outbox a cualquier otra cuenta.
 
 **Checkpoint**: completar `tests/e2e/offline-sync.spec.ts` en navegador y Safari de iPhone; documentar que los datos locales no son backup y que iOS no garantiza sync con la app cerrada.
 

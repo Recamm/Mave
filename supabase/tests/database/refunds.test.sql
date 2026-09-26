@@ -52,48 +52,46 @@ values (
   'ARS'
 );
 
-select lives_ok(
+select is(
   $$
-    insert into public.movements (
-      id,
-      kind,
-      amount,
-      currency,
-      category_id,
-      occurred_on,
-      financial_account_id
-    )
-    values (
-      '31000000-0000-0000-0000-000000000001',
-      'expense',
-      100.00,
-      'ARS',
-      current_setting('test.refund_food_category')::uuid,
-      date '2026-09-10',
-      '21000000-0000-0000-0000-000000000001'
-    )
+    select public.apply_movement_change(
+      p_action := 'create',
+      p_operation_id := '41000000-0000-0000-0000-000000000010',
+      p_movement_id := '31000000-0000-0000-0000-000000000001',
+      p_expected_version := null,
+      p_payload := jsonb_build_object(
+        'kind', 'expense',
+        'amount', '100.00',
+        'currency', 'ARS',
+        'category_id', current_setting('test.refund_food_category'),
+        'occurred_on', '2026-09-10',
+        'financial_account_id', '21000000-0000-0000-0000-000000000001',
+        'note', null
+      )
+    )->'movement'->>'id'
   $$,
+  '31000000-0000-0000-0000-000000000001',
   'owner can create the expense that receives a refund'
 );
-select lives_ok(
+select is(
   $$
-    insert into public.movements (
-      id,
-      kind,
-      amount,
-      currency,
-      category_id,
-      occurred_on
-    )
-    values (
-      '31000000-0000-0000-0000-000000000002',
-      'income',
-      100.00,
-      'ARS',
-      current_setting('test.refund_income_category')::uuid,
-      date '2026-09-10'
-    )
+    select public.apply_movement_change(
+      p_action := 'create',
+      p_operation_id := '41000000-0000-0000-0000-000000000011',
+      p_movement_id := '31000000-0000-0000-0000-000000000002',
+      p_expected_version := null,
+      p_payload := jsonb_build_object(
+        'kind', 'income',
+        'amount', '100.00',
+        'currency', 'ARS',
+        'category_id', current_setting('test.refund_income_category'),
+        'occurred_on', '2026-09-10',
+        'financial_account_id', null,
+        'note', null
+      )
+    )->'movement'->>'id'
   $$,
+  '31000000-0000-0000-0000-000000000002',
   'owner can create an income used to verify refund parent type'
 );
 

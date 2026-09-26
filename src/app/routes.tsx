@@ -4,7 +4,7 @@ import { useAuthSession } from './useAuthSession';
 import { FeedbackMessage } from './components/FeedbackMessage';
 import { getAppErrorMessage } from '../lib/errors';
 import { AuthPage } from '../features/auth/AuthPage';
-import { authService } from '../features/auth/authService';
+import { signOutWithPendingWarning } from '../features/auth/logoutService';
 import { MovementList } from '../features/movements/MovementList';
 
 export function AppRoutes() {
@@ -24,7 +24,7 @@ function HomeRoute() {
   }
 
   if (status === 'authenticated' && session) {
-    return <AuthenticatedHome email={session.user.email ?? ''} />;
+    return <AuthenticatedHome email={session.user.email ?? ''} ownerId={session.user.id} />;
   }
 
   return (
@@ -41,12 +41,12 @@ function HomeRoute() {
   );
 }
 
-function AuthenticatedHome({ email }: { email: string }) {
+function AuthenticatedHome({ email, ownerId }: { email: string; ownerId: string }) {
   const [error, setError] = useState(false);
 
   async function handleSignOut() {
     try {
-      await authService.signOut();
+      await signOutWithPendingWarning(ownerId);
     } catch {
       setError(true);
     }
