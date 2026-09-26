@@ -1,22 +1,26 @@
 import { useState } from 'react';
-import { Link, Route, Routes } from 'react-router-dom';
+import { Link, NavLink, Outlet, Route, Routes } from 'react-router-dom';
 import { useAuthSession } from './useAuthSession';
 import { FeedbackMessage } from './components/FeedbackMessage';
 import { getAppErrorMessage } from '../lib/errors';
 import { AuthPage } from '../features/auth/AuthPage';
 import { signOutWithPendingWarning } from '../features/auth/logoutService';
 import { MovementList } from '../features/movements/MovementList';
+import { AccountsPage } from '../features/accounts/AccountsPage';
 
 export function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<HomeRoute />} />
+      <Route element={<SessionRoute />}>
+        <Route path="/" element={<MovementList />} />
+        <Route path="/accounts" element={<AccountsPage />} />
+      </Route>
       <Route path="*" element={<NotFoundRoute />} />
     </Routes>
   );
 }
 
-function HomeRoute() {
+function SessionRoute() {
   const { errorCode, session, status } = useAuthSession();
 
   if (status === 'unauthenticated') {
@@ -65,7 +69,13 @@ function AuthenticatedHome({ email, ownerId }: { email: string; ownerId: string 
           No se pudo cerrar la sesión. Inténtalo de nuevo.
         </FeedbackMessage>
       ) : null}
-      <MovementList />
+      <nav aria-label="Navegación principal" className="session-navigation">
+        <NavLink end to="/">
+          Movimientos
+        </NavLink>
+        <NavLink to="/accounts">Cuentas y transferencias</NavLink>
+      </nav>
+      <Outlet />
     </div>
   );
 }

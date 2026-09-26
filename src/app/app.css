@@ -143,6 +143,41 @@ h2 {
   white-space: nowrap;
 }
 
+.session-navigation {
+  display: flex;
+  order: -1;
+  align-items: stretch;
+  gap: 0.25rem;
+  margin-right: auto;
+}
+
+.session-navigation a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 3.5rem;
+  padding: 0 0.7rem;
+  border-bottom: 2px solid transparent;
+  color: var(--color-muted);
+  font-size: 0.85rem;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.session-navigation a:hover {
+  color: var(--color-green-dark);
+  background: #f1f7f2;
+}
+
+.session-navigation a[aria-current='page'] {
+  border-bottom-color: var(--color-green);
+  color: var(--color-green-dark);
+}
+
+a:focus-visible {
+  outline: 3px solid #d17b4b;
+  outline-offset: 2px;
+}
+
 .movement-page {
   width: min(100% - 2.5rem, 70rem);
   margin: 0 auto;
@@ -754,6 +789,177 @@ h2 {
   flex: 0 0 auto;
 }
 
+.accounts-page__load-error {
+  margin-bottom: 1.25rem;
+}
+
+.accounts-page__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(18rem, 0.95fr);
+  align-items: start;
+  gap: 2rem;
+}
+
+.accounts-page__column {
+  display: grid;
+  min-width: 0;
+  gap: 1.75rem;
+}
+
+.accounts-panel,
+.transfer-history {
+  min-width: 0;
+}
+
+.accounts-panel__heading,
+.transfer-history__heading,
+.account-editor__heading,
+.transfer-editor__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.accounts-panel__heading,
+.transfer-history__heading {
+  padding: 0.35rem 0 0.9rem;
+  border-bottom: 1px solid var(--color-line);
+}
+
+.accounts-panel__heading h2,
+.transfer-history__heading h2,
+.account-editor__heading h2,
+.transfer-editor__heading h2 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.accounts-panel__heading > span,
+.transfer-history__heading > span {
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.financial-account-list,
+.transfer-history__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.financial-account-row,
+.transfer-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--color-line);
+}
+
+.financial-account-row__details,
+.transfer-row__details {
+  display: grid;
+  min-width: 0;
+  gap: 0.3rem;
+}
+
+.financial-account-row__details h3 {
+  overflow-wrap: anywhere;
+  margin: 0;
+  font-size: 1rem;
+}
+
+.financial-account-row__details p,
+.transfer-row__details time {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.8rem;
+}
+
+.financial-account-row__balance,
+.transfer-row__amount {
+  color: var(--color-ink);
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.accounts-panel__empty,
+.transfer-history__empty {
+  margin: 0;
+  padding: 1rem 0;
+  color: var(--color-muted);
+}
+
+.account-editor,
+.transfer-editor {
+  padding: 1.2rem;
+  border: 1px solid var(--color-line);
+  border-top: 3px solid var(--color-green);
+  background: var(--color-paper);
+}
+
+.account-editor__heading,
+.transfer-editor__heading {
+  margin-bottom: 1rem;
+}
+
+.transfer-editor__heading .eyebrow {
+  margin-bottom: 0.25rem;
+}
+
+.account-editor form,
+.transfer-editor form {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.account-editor label,
+.transfer-editor label {
+  margin-top: 0.25rem;
+  color: #33463b;
+  font-size: 0.83rem;
+  font-weight: 650;
+}
+
+.account-editor form > button,
+.transfer-editor form > button {
+  margin-top: 0.4rem;
+}
+
+.account-editor__feedback,
+.transfer-editor__feedback {
+  margin: 0.2rem 0;
+  font-size: 0.84rem;
+}
+
+.account-editor__feedback--error,
+.transfer-editor__feedback--error {
+  color: #88392f;
+}
+
+.account-editor__feedback--success,
+.transfer-editor__feedback--success {
+  color: #145538;
+}
+
+.transfer-editor__currency {
+  margin: -0.25rem 0 0.2rem;
+  color: var(--color-muted);
+  font-size: 0.78rem;
+}
+
+.transfer-history__heading {
+  margin-bottom: 0.1rem;
+}
+
+.transfer-row__details strong {
+  overflow-wrap: anywhere;
+  font-size: 0.9rem;
+}
+
 @keyframes enter-ledger {
   from {
     opacity: 0;
@@ -766,12 +972,32 @@ h2 {
 }
 
 @media (max-width: 760px) {
+  .session-strip {
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  .session-navigation {
+    order: 1;
+    flex: 1 0 100%;
+    border-top: 1px solid var(--color-line);
+  }
+
+  .session-navigation a {
+    min-height: 2.75rem;
+  }
+
   .movement-page {
     width: min(100% - 1.5rem, 40rem);
     padding-top: 1.5rem;
   }
 
   .movement-page__content {
+    grid-template-columns: 1fr;
+    gap: 1.75rem;
+  }
+
+  .accounts-page__grid {
     grid-template-columns: 1fr;
     gap: 1.75rem;
   }
@@ -788,6 +1014,15 @@ h2 {
 @media (max-width: 480px) {
   .session-strip {
     padding-inline: 0.75rem;
+  }
+
+  .session-navigation {
+    gap: 0;
+  }
+
+  .session-navigation a {
+    padding-inline: 0.45rem;
+    font-size: 0.78rem;
   }
 
   .movement-page__header {
@@ -807,6 +1042,13 @@ h2 {
     align-items: flex-start;
     grid-template-columns: minmax(0, 1fr);
     gap: 0.75rem;
+  }
+
+  .financial-account-row,
+  .transfer-row {
+    align-items: flex-start;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.4rem;
   }
 
   .movement-row__actions {

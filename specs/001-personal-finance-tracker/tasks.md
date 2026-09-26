@@ -119,13 +119,13 @@ Cada tarea usa `- [ ] Tnnn [P?] [USn?] descripción con rutas`. `[P]` indica tra
 ### Tests for User Story 4
 
 - [ ] T030 [P] [US4] Escribir pruebas pgTAP y de integración que fallen para cuentas y transferencias en `supabase/tests/database/transfers.test.sql` y `tests/integration/transfer-summary.test.ts`; cubrir propietario, cuentas distintas, misma moneda, atomicidad, saldos y exclusión de ingresos/gastos.
-- [ ] T031 [P] [US4] Escribir la prueba end-to-end de gestión de cuentas y transferencias en `tests/e2e/accounts-transfers.spec.ts`; cubrir efectivo/banco/billetera/otra fuente, moneda, saldo inicial opcional y rechazo de cuentas ajenas o monedas distintas.
+- [X] T031 [P] [US4] Escribir la prueba end-to-end de gestión de cuentas y transferencias en `tests/e2e/accounts-transfers.spec.ts`; cubrir efectivo/banco/billetera/otra fuente, moneda, saldo inicial opcional y rechazo de cuentas ajenas o monedas distintas.
 
 ### Implementation for User Story 4
 
-- [ ] T032 [US4] Añadir en `supabase/migrations/0005_transfer_operations.sql` la RPC transaccional `record_transfer`; exigir importe positivo, cuentas de origen/destino propias y distintas, misma moneda, UUID idempotente y ausencia de efectos parciales. Mantener la transferencia fuera de ingresos y gastos.
-- [ ] T033 [P] [US4] Implementar alta y consulta de cuentas y saldo derivado en `src/features/accounts/accountService.ts`, `src/features/accounts/accountBalance.ts` y `src/features/accounts/AccountsPage.tsx`; aplicar saldo inicial o cero, ingresos, gastos, devoluciones asociadas y transferencias recibidas/enviadas sin mutar saldos como fuente paralela.
-- [ ] T034 [US4] Implementar registro e historial de transferencias mediante la RPC en `src/features/accounts/transferService.ts`, `src/features/accounts/TransferForm.tsx` y `src/features/accounts/TransferHistory.tsx`; rechazar origen igual a destino, cuenta ajena o moneda distinta sin conversión automática.
+- [X] T032 [US4] Añadir en `supabase/migrations/0005_transfer_operations.sql` la RPC transaccional `record_transfer`; exigir importe positivo, cuentas de origen/destino propias y distintas, misma moneda, UUID idempotente y ausencia de efectos parciales. Mantener la transferencia fuera de ingresos y gastos.
+- [X] T033 [P] [US4] Implementar alta y consulta de cuentas y saldo derivado en `src/features/accounts/accountService.ts`, `src/features/accounts/accountBalance.ts` y `src/features/accounts/AccountsPage.tsx`; aplicar saldo inicial o cero, ingresos, gastos, devoluciones asociadas y transferencias recibidas/enviadas sin mutar saldos como fuente paralela.
+- [X] T034 [US4] Implementar registro e historial de transferencias mediante la RPC en `src/features/accounts/transferService.ts`, `src/features/accounts/TransferForm.tsx` y `src/features/accounts/TransferHistory.tsx`; rechazar origen igual a destino, cuenta ajena o moneda distinta sin conversión automática.
 
 **Checkpoint**: completar el Independent Test y confirmar que T030 pasa, incluidos los casos de transferencia que no altera los totales de US2.
 

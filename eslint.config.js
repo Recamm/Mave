@@ -8,6 +8,8 @@ import tseslint from 'typescript-eslint';
 export default tseslint.config(
   {
     ignores: [
+      '**/*.min.js',
+      'build/**',
       'coverage/**',
       'dist/**',
       'node_modules/**',

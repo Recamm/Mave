@@ -42,6 +42,18 @@ type MovementConflictRevisionRow = {
   user_id: string;
 };
 
+type TransferRow = {
+  amount: number;
+  amount_text: string;
+  client_operation_id: string;
+  created_at: string;
+  destination_account_id: string;
+  id: string;
+  occurred_on: string;
+  source_account_id: string;
+  user_id: string;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -245,17 +257,7 @@ export type Database = {
         Relationships: [];
       };
       transfers: {
-        Row: {
-          amount: number;
-          amount_text: string;
-          client_operation_id: string;
-          created_at: string;
-          destination_account_id: string;
-          id: string;
-          occurred_on: string;
-          source_account_id: string;
-          user_id: string;
-        };
+        Row: TransferRow;
         Insert: {
           amount: string;
           client_operation_id?: string;
@@ -310,6 +312,16 @@ export type Database = {
           p_revision_id: string;
         };
         Returns: Json;
+      };
+      record_transfer: {
+        Args: {
+          p_amount: string;
+          p_destination_account_id: string;
+          p_occurred_on: string;
+          p_operation_id: string;
+          p_source_account_id: string;
+        };
+        Returns: TransferRow;
       };
     };
     Enums: { [_ in never]: never };
