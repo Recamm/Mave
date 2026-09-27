@@ -335,6 +335,25 @@ test('registers a first movement, edits and deletes it, and manages categories',
   const proposedDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
   await expect(dateInput).toHaveValue(proposedDate);
 
+  await page.getByRole('radio', { name: 'Recurrente' }).check();
+  await page.getByRole('checkbox', { name: 'Activar avisos' }).check();
+  const reminderLead = page.getByLabel('Avisar antes');
+  await expect(reminderLead).toHaveValue('7');
+  await expect(reminderLead.locator('option')).toHaveText([
+    '1 día antes',
+    '3 días antes',
+    '1 semana antes',
+    '2 semanas antes',
+    '1 mes antes',
+  ]);
+  const onceReminder = page.getByRole('radio', { name: 'Una vez, al iniciar el plazo' });
+  const dailyReminder = page.getByRole('radio', { name: 'Cada día hasta el vencimiento' });
+  await onceReminder.check();
+  await expect(onceReminder).toBeChecked();
+  await dailyReminder.check();
+  await expect(dailyReminder).toBeChecked();
+  await page.getByRole('radio', { name: 'Una vez', exact: true }).check();
+
   const correctedDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
   const correctedDateValue = `${correctedDate.getFullYear()}-${String(correctedDate.getMonth() + 1).padStart(2, '0')}-${String(correctedDate.getDate()).padStart(2, '0')}`;
   await dateInput.fill(correctedDateValue);

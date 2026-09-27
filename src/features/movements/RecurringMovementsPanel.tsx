@@ -5,6 +5,7 @@ import { FeedbackMessage } from '../../app/components/FeedbackMessage';
 import { formatCivilDate, formatMoney } from '../../lib/money/format';
 import type { Category } from '../categories/categoryService';
 import type { RecurringMovement } from './recurringMovementService';
+import { getReminderFrequency, reminderLeadOptions } from './recurrence';
 
 type RecurringMovementsPanelProps = {
   categories: Category[];
@@ -108,6 +109,13 @@ export function RecurringMovementsPanel({
           const label = movement.note?.trim() || category?.name || 'Movimiento recurrente';
           const [singular, plural] = intervalLabels[movement.interval_unit];
           const intervalLabel = movement.interval_count === 1 ? singular : plural;
+          const reminderFrequency = getReminderFrequency(
+            movement.reminder_days_before,
+            movement.reminder_every_days,
+          );
+          const reminderLead =
+            reminderLeadOptions.find((option) => option.days === movement.reminder_days_before)
+              ?.label ?? `${movement.reminder_days_before} días antes`;
           const isPending = pendingId === movement.id;
 
           return (
@@ -132,7 +140,13 @@ export function RecurringMovementsPanel({
                 <p>
                   Cada {movement.interval_count} {intervalLabel}
                   {movement.reminder_enabled
-                    ? ` · Aviso ${movement.reminder_days_before} días antes, cada ${movement.reminder_every_days} días`
+                    ? ` · Aviso ${reminderLead}, ${
+                        reminderFrequency === 'once'
+                          ? 'una vez al iniciar el plazo'
+                          : reminderFrequency === 'daily'
+                            ? 'cada día hasta el vencimiento'
+                            : `cada ${movement.reminder_every_days} días`
+                      }`
                     : ' · Sin avisos'}
                 </p>
               </div>

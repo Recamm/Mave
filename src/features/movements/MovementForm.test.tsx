@@ -34,6 +34,7 @@ describe('MovementForm recurring entries', () => {
     await user.selectOptions(screen.getByLabelText('Categoría'), 'category-services');
     await user.type(screen.getByLabelText('Nota (opcional)'), 'Gimnasio');
     await user.click(screen.getByRole('checkbox', { name: 'Activar avisos' }));
+    await user.click(screen.getByRole('radio', { name: 'Cada día hasta el vencimiento' }));
     await user.click(screen.getByRole('button', { name: 'Crear recurrencia' }));
 
     await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
@@ -50,6 +51,7 @@ describe('MovementForm recurring entries', () => {
       intervalUnit: 'month',
       reminderDaysBefore: 7,
       reminderEnabled: true,
+      reminderFrequency: 'daily',
       reminderEveryDays: 1,
     });
   });

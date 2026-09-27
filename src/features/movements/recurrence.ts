@@ -1,11 +1,20 @@
 export type RecurrenceUnit = 'day' | 'week' | 'month' | 'year';
+export type ReminderFrequency = 'once' | 'daily';
+
+export const reminderLeadOptions = [
+  { days: 1, label: '1 día antes' },
+  { days: 3, label: '3 días antes' },
+  { days: 7, label: '1 semana antes' },
+  { days: 14, label: '2 semanas antes' },
+  { days: 30, label: '1 mes antes' },
+] as const;
 
 export type RecurrenceDraft = {
   intervalCount: string;
   intervalUnit: string;
   reminderDaysBefore: string;
   reminderEnabled: boolean;
-  reminderEveryDays: string;
+  reminderFrequency: ReminderFrequency;
 };
 
 export type RecurrenceSettings = {
@@ -13,6 +22,7 @@ export type RecurrenceSettings = {
   intervalUnit: RecurrenceUnit;
   reminderDaysBefore: number;
   reminderEnabled: boolean;
+  reminderFrequency: ReminderFrequency;
   reminderEveryDays: number;
 };
 
@@ -29,7 +39,7 @@ export function createRecurrenceDraft(): RecurrenceDraft {
     intervalUnit: 'month',
     reminderDaysBefore: '7',
     reminderEnabled: false,
-    reminderEveryDays: '1',
+    reminderFrequency: 'daily',
   };
 }
 
@@ -43,32 +53,50 @@ export function normalizeRecurrenceSettings(draft: RecurrenceDraft): RecurrenceS
     throw new RecurrenceInputError('Selecciona cada cuánto se repite.');
   }
 
+  const intervalCount = parseWholeNumber(
+    draft.intervalCount,
+    1,
+    365,
+    'La frecuencia debe estar entre 1 y 365.',
+  );
+  const reminderDaysBefore = draft.reminderEnabled
+    ? parseWholeNumber(draft.reminderDaysBefore, 1, 30, 'Selecciona una anticipación válida.')
+    : 7;
+
+  if (
+    draft.reminderEnabled &&
+    !reminderLeadOptions.some((option) => option.days === reminderDaysBefore)
+  ) {
+    throw new RecurrenceInputError('Selecciona una anticipación válida.');
+  }
+  if (
+    draft.reminderEnabled &&
+    draft.reminderFrequency !== 'once' &&
+    draft.reminderFrequency !== 'daily'
+  ) {
+    throw new RecurrenceInputError('Selecciona la frecuencia del aviso.');
+  }
+
+  const reminderFrequency = draft.reminderEnabled ? draft.reminderFrequency : 'daily';
+
   return {
-    intervalCount: parseWholeNumber(
-      draft.intervalCount,
-      1,
-      365,
-      'La frecuencia debe estar entre 1 y 365.',
-    ),
+    intervalCount,
     intervalUnit: draft.intervalUnit,
-    reminderDaysBefore: draft.reminderEnabled
-      ? parseWholeNumber(
-          draft.reminderDaysBefore,
-          0,
-          365,
-          'La anticipación debe estar entre 0 y 365 días.',
-        )
-      : 7,
+    reminderDaysBefore,
     reminderEnabled: draft.reminderEnabled,
-    reminderEveryDays: draft.reminderEnabled
-      ? parseWholeNumber(
-          draft.reminderEveryDays,
-          1,
-          365,
-          'La repetición debe estar entre 1 y 365 días.',
-        )
-      : 1,
+    reminderFrequency,
+    reminderEveryDays: reminderFrequency === 'once' ? reminderDaysBefore + 1 : 1,
   };
+}
+
+export function getReminderFrequency(
+  daysBefore: number,
+  everyDays: number,
+): ReminderFrequency | 'custom' {
+  if (everyDays === 1) {
+    return 'daily';
+  }
+  return everyDays === daysBefore + 1 ? 'once' : 'custom';
 }
 
 export function getOccurrenceDate(

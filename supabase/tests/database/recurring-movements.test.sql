@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(18);
+select plan(21);
 
 insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at)
 values
@@ -155,6 +155,23 @@ select is(
   (select count(*) from public.claim_due_recurring_movement_reminders('2026-09-28 09:00:00+00')),
   0::bigint,
   'reminders stop after the due date'
+);
+update public.recurring_movements
+set reminder_every_days = 8, last_notified_on = null;
+select is(
+  (select count(*) from public.claim_due_recurring_movement_reminders('2026-09-20 09:00:00+00')),
+  1::bigint,
+  'a one-time reminder is sent when the configured window starts'
+);
+select is(
+  (select count(*) from public.claim_due_recurring_movement_reminders('2026-09-21 09:00:00+00')),
+  0::bigint,
+  'a one-time reminder is not repeated during the window'
+);
+select is(
+  (select count(*) from public.claim_due_recurring_movement_reminders('2026-09-27 09:00:00+00')),
+  0::bigint,
+  'a one-time reminder is not repeated on the due date'
 );
 
 reset role;

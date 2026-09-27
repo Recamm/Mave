@@ -12,6 +12,7 @@ import {
 import {
   createRecurrenceDraft,
   normalizeRecurrenceSettings,
+  reminderLeadOptions,
   RecurrenceInputError,
   type RecurrenceDraft,
   type RecurrenceSettings,
@@ -277,33 +278,51 @@ export function MovementForm({
 
             {recurrenceDraft.reminderEnabled ? (
               <>
-                <label htmlFor="recurrence-reminder-days-before">Avisar con cuántos días</label>
-                <input
+                <label htmlFor="recurrence-reminder-days-before">Avisar antes</label>
+                <select
                   id="recurrence-reminder-days-before"
-                  max={365}
-                  min={0}
                   onChange={(event) =>
                     updateRecurrenceDraft('reminderDaysBefore', event.target.value)
                   }
                   required
-                  type="number"
                   value={recurrenceDraft.reminderDaysBefore}
-                />
+                >
+                  {reminderLeadOptions.map((option) => (
+                    <option key={option.days} value={option.days}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
 
-                <label htmlFor="recurrence-reminder-every-days">
-                  Repetir aviso cada cuántos días
-                </label>
-                <input
-                  id="recurrence-reminder-every-days"
-                  max={365}
-                  min={1}
-                  onChange={(event) =>
-                    updateRecurrenceDraft('reminderEveryDays', event.target.value)
-                  }
-                  required
-                  type="number"
-                  value={recurrenceDraft.reminderEveryDays}
-                />
+                <fieldset className="movement-form__reminder-frequency">
+                  <legend>Frecuencia del aviso</legend>
+                  <div className="movement-form__frequency-options">
+                    <label
+                      className={recurrenceDraft.reminderFrequency === 'once' ? 'is-selected' : ''}
+                    >
+                      <input
+                        checked={recurrenceDraft.reminderFrequency === 'once'}
+                        name="recurrence-reminder-frequency"
+                        onChange={() => updateRecurrenceDraft('reminderFrequency', 'once')}
+                        type="radio"
+                        value="once"
+                      />
+                      <span>Una vez, al iniciar el plazo</span>
+                    </label>
+                    <label
+                      className={recurrenceDraft.reminderFrequency === 'daily' ? 'is-selected' : ''}
+                    >
+                      <input
+                        checked={recurrenceDraft.reminderFrequency === 'daily'}
+                        name="recurrence-reminder-frequency"
+                        onChange={() => updateRecurrenceDraft('reminderFrequency', 'daily')}
+                        type="radio"
+                        value="daily"
+                      />
+                      <span>Cada día hasta el vencimiento</span>
+                    </label>
+                  </div>
+                </fieldset>
 
                 <WebLoginPushSettings />
               </>

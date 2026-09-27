@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   createRecurrenceDraft,
   getOccurrenceDate,
+  getReminderFrequency,
   getReminderStartDate,
   normalizeRecurrenceSettings,
+  reminderLeadOptions,
   RecurrenceInputError,
 } from './recurrence';
 
@@ -35,13 +37,14 @@ describe('recurrence dates', () => {
         ...createRecurrenceDraft(),
         reminderEnabled: true,
         reminderDaysBefore: '7',
-        reminderEveryDays: '1',
+        reminderFrequency: 'daily',
       }),
     ).toEqual({
       intervalCount: 1,
       intervalUnit: 'month',
       reminderDaysBefore: 7,
       reminderEnabled: true,
+      reminderFrequency: 'daily',
       reminderEveryDays: 1,
     });
   });
@@ -51,9 +54,46 @@ describe('recurrence dates', () => {
       normalizeRecurrenceSettings({
         ...createRecurrenceDraft(),
         reminderDaysBefore: '',
-        reminderEveryDays: '',
+        reminderFrequency: 'once',
       }),
-    ).toMatchObject({ reminderDaysBefore: 7, reminderEnabled: false, reminderEveryDays: 1 });
+    ).toMatchObject({
+      reminderDaysBefore: 7,
+      reminderEnabled: false,
+      reminderFrequency: 'daily',
+      reminderEveryDays: 1,
+    });
+  });
+
+  it('maps a one-time reminder to a single notification at the start of the window', () => {
+    const settings = normalizeRecurrenceSettings({
+      ...createRecurrenceDraft(),
+      reminderEnabled: true,
+      reminderFrequency: 'once',
+    });
+
+    expect(settings).toMatchObject({
+      reminderDaysBefore: 7,
+      reminderFrequency: 'once',
+      reminderEveryDays: 8,
+    });
+    expect(getReminderFrequency(settings.reminderDaysBefore, settings.reminderEveryDays)).toBe(
+      'once',
+    );
+  });
+
+  it('keeps daily and legacy custom cadences distinguishable', () => {
+    expect(getReminderFrequency(7, 1)).toBe('daily');
+    expect(getReminderFrequency(7, 3)).toBe('custom');
+  });
+
+  it('offers the selected notice windows in calendar-friendly units', () => {
+    expect(reminderLeadOptions.map((option) => option.label)).toEqual([
+      '1 día antes',
+      '3 días antes',
+      '1 semana antes',
+      '2 semanas antes',
+      '1 mes antes',
+    ]);
   });
 
   it('rejects out-of-range recurrence and reminder intervals', () => {
@@ -64,7 +104,7 @@ describe('recurrence dates', () => {
       normalizeRecurrenceSettings({
         ...createRecurrenceDraft(),
         reminderEnabled: true,
-        reminderEveryDays: '0',
+        reminderDaysBefore: '2',
       }),
     ).toThrow(RecurrenceInputError);
   });
