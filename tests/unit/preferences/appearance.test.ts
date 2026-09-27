@@ -11,8 +11,8 @@ describe('appearance preferences', () => {
     window.localStorage.clear();
   });
 
-  it('uses the system preference when no choice has been saved', () => {
-    expect(getAppearancePreference()).toBe('system');
+  it('uses the dark preference when no choice has been saved', () => {
+    expect(getAppearancePreference()).toBe('dark');
   });
 
   it.each(['light', 'dark', 'system'] as const)(
@@ -24,10 +24,10 @@ describe('appearance preferences', () => {
     },
   );
 
-  it('falls back to the system preference for invalid stored values', () => {
+  it('falls back to the dark preference for invalid stored values', () => {
     window.localStorage.setItem('mave.appearance', 'sepia');
 
-    expect(getAppearancePreference()).toBe('system');
+    expect(getAppearancePreference()).toBe('dark');
   });
 
   it('resolves system appearance from the operating system preference', () => {

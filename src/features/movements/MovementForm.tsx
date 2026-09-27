@@ -8,10 +8,12 @@ import {
   type MovementDraft,
   type MovementInput,
 } from './movementInput';
+import type { FinancialAccount } from '../accounts/accountService';
 import type { FinancialAccountOption, Movement } from './movementService';
 
 type MovementFormProps = {
   categories: Category[];
+  defaultAccount?: FinancialAccount | null;
   financialAccounts: FinancialAccountOption[];
   movement?: Movement | null;
   onCancel: () => void;
@@ -32,14 +34,24 @@ function toDraft(movement: Movement): MovementDraft {
 
 export function MovementForm({
   categories,
+  defaultAccount = null,
   financialAccounts,
   movement,
   onCancel,
   onSave,
 }: MovementFormProps) {
-  const [draft, setDraft] = useState(() =>
-    movement ? toDraft(movement) : createMovementDefaults(),
-  );
+  const [draft, setDraft] = useState(() => {
+    if (movement) {
+      return toDraft(movement);
+    }
+
+    const defaults = createMovementDefaults();
+    return {
+      ...defaults,
+      currency: defaultAccount?.currency ?? defaults.currency,
+      financialAccountId: defaultAccount?.id ?? defaults.financialAccountId,
+    };
+  });
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const archivedCategory = categories.find(

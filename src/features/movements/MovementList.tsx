@@ -1,7 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { X } from 'lucide-react';
 import { FeedbackMessage } from '../../app/components/FeedbackMessage';
 import { useAuthSession } from '../../app/useAuthSession';
-import { CategoryManager } from '../categories/CategoryManager';
+import { AccountBalanceOverview } from '../accounts/AccountBalanceOverview';
+import { accountService, type FinancialAccount } from '../accounts/accountService';
+import { transferService, type Transfer } from '../accounts/transferService';
 import { categoryService, type Category } from '../categories/categoryService';
 import { MovementForm } from './MovementForm';
 import type { MovementInput } from './movementInput';
@@ -25,22 +29,39 @@ export function MovementList() {
   const ownerId = session?.user.id ?? null;
   const [categories, setCategories] = useState<Category[]>([]);
   const [financialAccounts, setFinancialAccounts] = useState<FinancialAccountOption[]>([]);
+  const [accounts, setAccounts] = useState<FinancialAccount[]>([]);
+  const [transfers, setTransfers] = useState<Transfer[]>([]);
+  const [selectedAccountId, setSelectedAccountId] = useState('');
   const [movements, setMovements] = useState<Movement[]>([]);
   const [conflicts, setConflicts] = useState<MovementConflict[]>([]);
   const [refunds, setRefunds] = useState<Refund[]>([]);
   const [period, setPeriod] = useState(() => getCurrentPeriod());
   const [editingMovement, setEditingMovement] = useState<Movement | null>(null);
-  const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
+  const [isMovementFormOpen, setIsMovementFormOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAccountOverviewLoading, setIsAccountOverviewLoading] = useState(true);
+  const [hasAccountOverviewError, setHasAccountOverviewError] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
   const [actionError, setActionError] = useState(false);
   const [expiredPendingPurged, setExpiredPendingPurged] = useState(false);
+  const movementDialogRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const dialog = movementDialogRef.current;
+    if (isMovementFormOpen && dialog && !dialog.open) {
+      dialog.showModal();
+    }
+  }, [isMovementFormOpen]);
 
   useEffect(() => {
     let isCurrent = true;
     setIsLoading(true);
+    setIsAccountOverviewLoading(true);
+    setHasAccountOverviewError(false);
     setConflicts([]);
     setExpiredPendingPurged(false);
+    setAccounts([]);
+    setTransfers([]);
 
     async function loadPage() {
       const cachedLookups = ownerId ? readOwnerLookups(ownerId) : null;
@@ -71,7 +92,15 @@ export function MovementList() {
         movementService.listFinancialAccounts(),
       ]);
       const syncPromise = ownerId ? syncEngine.synchronizePending(ownerId) : Promise.resolve([]);
-      const [readResult, syncResult] = await Promise.allSettled([readsPromise, syncPromise]);
+      const accountOverviewPromise = Promise.all([
+        accountService.listAccounts(),
+        transferService.listTransfers(),
+      ]);
+      const [readResult, syncResult, accountOverviewResult] = await Promise.allSettled([
+        readsPromise,
+        syncPromise,
+        accountOverviewPromise,
+      ]);
 
       if (!isCurrent) {
         return;
@@ -97,6 +126,16 @@ export function MovementList() {
       } else if (cachedLookups === null && ownerId !== null) {
         setLoadFailed(true);
       }
+
+      if (accountOverviewResult.status === 'fulfilled') {
+        const [loadedAccounts, loadedTransfers] = accountOverviewResult.value;
+        setAccounts(loadedAccounts);
+        setTransfers(loadedTransfers);
+        setSelectedAccountId(ownerId ? getStoredAccountId(ownerId, loadedAccounts) : '');
+      } else {
+        setHasAccountOverviewError(true);
+      }
+      setIsAccountOverviewLoading(false);
 
       if (syncResult.status === 'fulfilled') {
         const discardedPendingCount = syncResult.value.reduce(
@@ -204,14 +243,6 @@ export function MovementList() {
     };
   }, [ownerId]);
 
-  async function refreshCategories() {
-    const updatedCategories = await categoryService.listCategories();
-    setCategories(updatedCategories);
-    if (ownerId) {
-      writeOwnerLookups(ownerId, { categories: updatedCategories, financialAccounts });
-    }
-  }
-
   async function refreshPeriodRecords() {
     const periodRecords = await summaryService.listPeriodRecords();
     setMovements(periodRecords.movements);
@@ -267,6 +298,7 @@ export function MovementList() {
       return [result.movement, ...withoutSavedMovement].sort(sortByDate);
     });
     setEditingMovement(null);
+    setIsMovementFormOpen(false);
     setActionError(false);
   }
 
@@ -327,29 +359,69 @@ export function MovementList() {
     }
   }
 
+  function handleEditMovement(movement: Movement) {
+    setEditingMovement(movement);
+    setIsMovementFormOpen(true);
+  }
+
+  function closeMovementForm() {
+    setEditingMovement(null);
+    setIsMovementFormOpen(false);
+  }
+
+  function handleAccountChange(accountId: string) {
+    setSelectedAccountId(accountId);
+    if (ownerId) {
+      try {
+        window.localStorage.setItem(`mave.selected-account.${ownerId}`, accountId);
+      } catch {
+        return;
+      }
+    }
+  }
+
+  const movementsForAccount = selectedAccountId
+    ? movements.filter((movement) => movement.financial_account_id === selectedAccountId)
+    : movements.filter((movement) => movement.financial_account_id === null);
+  const movementIdsForAccount = new Set(movementsForAccount.map((movement) => movement.id));
+  const refundsForAccount = refunds.filter((refund) =>
+    movementIdsForAccount.has(refund.expense_id),
+  );
+  const selectedAccount = accounts.find((account) => account.id === selectedAccountId) ?? null;
+
   return (
-    <main className="movement-page">
+    <main className="movement-page dashboard-page">
       <header className="movement-page__header">
         <div>
-          <p className="eyebrow">Libro personal</p>
-          <h1>Movimientos</h1>
+          <h1 className="visually-hidden">Inicio</h1>
         </div>
-        <button
-          aria-expanded={isCategoryManagerOpen}
-          onClick={() => setIsCategoryManagerOpen((open) => !open)}
-          type="button"
-        >
-          {isCategoryManagerOpen ? 'Ocultar categorías' : 'Gestionar categorías'}
-        </button>
       </header>
 
-      {isCategoryManagerOpen ? (
-        <CategoryManager
-          categories={categories}
-          onCategoriesChanged={refreshCategories}
-          onClose={() => setIsCategoryManagerOpen(false)}
-        />
-      ) : null}
+      <AccountBalanceOverview
+        accounts={accounts}
+        onAccountChange={handleAccountChange}
+        period={period}
+        selectedAccountId={selectedAccountId}
+        hasLoadError={hasAccountOverviewError}
+        isLoading={isAccountOverviewLoading}
+        movements={movements}
+        refunds={refunds}
+        transfers={transfers}
+      />
+
+      <div className="dashboard-actions__list">
+        <button
+          aria-haspopup="dialog"
+          className="button-primary dashboard-action"
+          onClick={() => setIsMovementFormOpen(true)}
+          type="button"
+        >
+          Nuevo movimiento
+        </button>
+        <Link className="dashboard-action" to="/accounts">
+          Transferir
+        </Link>
+      </div>
 
       {loadFailed ? (
         <FeedbackMessage tone="error">
@@ -374,39 +446,76 @@ export function MovementList() {
         onResolve={(conflict, revision) => void handleResolveConflict(conflict, revision)}
       />
 
-      <PeriodSummary
+      {isMovementFormOpen ? (
+        <dialog
+          aria-labelledby="movement-form-title"
+          className="movement-dialog"
+          onCancel={(event) => {
+            event.preventDefault();
+            closeMovementForm();
+          }}
+          ref={movementDialogRef}
+        >
+          <button
+            aria-label="Cerrar formulario"
+            autoFocus
+            className="movement-dialog__close"
+            onClick={closeMovementForm}
+            title="Cerrar formulario"
+            type="button"
+          >
+            <X aria-hidden="true" size={20} />
+          </button>
+          <MovementForm
+            categories={categories}
+            defaultAccount={selectedAccount}
+            financialAccounts={financialAccounts}
+            key={editingMovement?.id ?? `new-movement:${selectedAccountId}`}
+            movement={editingMovement}
+            onCancel={closeMovementForm}
+            onSave={handleSave}
+          />
+        </dialog>
+      ) : null}
+
+      <MovementHistory
         categories={categories}
-        movements={movements}
-        onPeriodChange={setPeriod}
+        financialAccounts={financialAccounts}
+        isLoading={isLoading}
+        movements={movementsForAccount}
+        onDeleteMovement={handleDelete}
+        onDeleteRefund={handleDeleteRefund}
+        onEditMovement={handleEditMovement}
+        onRecordsChanged={refreshPeriodRecords}
         period={period}
-        refunds={refunds}
+        refunds={refundsForAccount}
       />
 
-      <div className="movement-page__content">
-        <MovementForm
+      <details className="dashboard-period" id="period-summary">
+        <summary>Resumen del período y categorías</summary>
+        <PeriodSummary
           categories={categories}
-          financialAccounts={financialAccounts}
-          key={editingMovement?.id ?? 'new-movement'}
-          movement={editingMovement}
-          onCancel={() => setEditingMovement(null)}
-          onSave={handleSave}
-        />
-
-        <MovementHistory
-          categories={categories}
-          financialAccounts={financialAccounts}
-          isLoading={isLoading}
           movements={movements}
-          onDeleteMovement={handleDelete}
-          onDeleteRefund={handleDeleteRefund}
-          onEditMovement={setEditingMovement}
-          onRecordsChanged={refreshPeriodRecords}
+          onPeriodChange={setPeriod}
           period={period}
           refunds={refunds}
         />
-      </div>
+      </details>
     </main>
   );
+}
+
+function getStoredAccountId(ownerId: string, accounts: FinancialAccount[]): string {
+  let storedAccountId: string | null = null;
+  try {
+    storedAccountId = window.localStorage.getItem(`mave.selected-account.${ownerId}`);
+  } catch {
+    return accounts[0]?.id ?? '';
+  }
+
+  return accounts.some((account) => account.id === storedAccountId)
+    ? (storedAccountId ?? '')
+    : (accounts[0]?.id ?? '');
 }
 
 function applySyncResults(current: Movement[], results: SyncOutcome[]): Movement[] {

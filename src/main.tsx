@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './app/App';
 import { applyAppearancePreference, getAppearancePreference } from './app/appearance';
+import { applyMobileNavigationStyle, getMobileNavigationStyle } from './app/mobileNavigation';
 import { registerServiceWorker } from './service-worker-registration';
 import './app/app.css';
 
@@ -12,6 +13,7 @@ if (!rootElement) {
 }
 
 applyAppearancePreference(getAppearancePreference());
+applyMobileNavigationStyle(getMobileNavigationStyle());
 registerServiceWorker();
 
 createRoot(rootElement).render(

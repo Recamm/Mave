@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
-import { AppearanceSettings } from '../../app/components/AppearanceSettings';
 import { FeedbackMessage } from '../../app/components/FeedbackMessage';
 import { AuthServiceError, authService } from './authService';
+import brandLogo from '../../../info/finanzas-pwa/assets/brand/logo.svg';
 
 type AuthMode = 'sign-in' | 'sign-up' | 'recovery';
 
@@ -68,7 +68,10 @@ export function AuthPage() {
     <main className="auth-page">
       <section aria-labelledby="auth-title" className="auth-panel">
         <p className="eyebrow">Finanzas personales</p>
-        <h1 id="auth-title">Mave</h1>
+        <div className="auth-brand">
+          <img alt="" src={brandLogo} />
+          <h1 id="auth-title">Mave</h1>
+        </div>
         <p className="auth-intro">Tus movimientos, en un espacio privado.</p>
 
         <div aria-label="Acceso a Mave" className="auth-modes">
@@ -126,8 +129,6 @@ export function AuthPage() {
             {isSubmitting ? 'Procesando…' : title}
           </button>
         </form>
-
-        <AppearanceSettings />
 
         {feedback ? (
           <FeedbackMessage tone={feedback.tone}>{feedback.message}</FeedbackMessage>

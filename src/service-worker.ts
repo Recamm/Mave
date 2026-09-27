@@ -27,6 +27,7 @@ worker.addEventListener('install', (event) => {
       await cache.addAll([
         appShellUrl,
         new URL('manifest.webmanifest', appScope).toString(),
+        new URL('icons/mave.svg', appScope).toString(),
         new URL('icons/icon-192.png', appScope).toString(),
         new URL('icons/icon-512.png', appScope).toString(),
         new URL('icons/apple-touch-icon.png', appScope).toString(),

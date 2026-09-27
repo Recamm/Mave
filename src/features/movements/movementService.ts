@@ -37,7 +37,8 @@ export type Movement = Pick<
   | 'version'
 > & { amount: string; syncStatus?: MovementSyncStatus };
 
-export type MovementSyncStatus = 'synced' | 'pending' | 'sending' | 'retry' | 'conflict' | 'blocked';
+export type MovementSyncStatus =
+  'synced' | 'pending' | 'sending' | 'retry' | 'conflict' | 'blocked';
 
 export type FinancialAccountOption = Pick<FinancialAccountRow, 'currency' | 'id' | 'name'>;
 

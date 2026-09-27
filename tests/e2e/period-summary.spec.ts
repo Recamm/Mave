@@ -219,6 +219,11 @@ test('summarizes a month by currency and category and records partial refunds', 
       return;
     }
 
+    if (url.pathname === '/rest/v1/transfers' && request.method() === 'GET') {
+      await respond([]);
+      return;
+    }
+
     if (url.pathname === '/rest/v1/movements' && request.method() === 'GET') {
       await respond(movements.filter((movement) => movement.deleted_at === null));
       return;
@@ -290,6 +295,7 @@ test('summarizes a month by currency and category and records partial refunds', 
     .getByRole('button', { name: 'Crear cuenta' })
     .click();
 
+  await page.getByText('Resumen del período y categorías', { exact: true }).click();
   const summary = page.getByRole('region', { name: 'Resumen del período' });
   const periodInput = summary.getByLabel('Período');
   await expect(periodInput).toHaveValue('2026-09');
@@ -310,6 +316,7 @@ test('summarizes a month by currency and category and records partial refunds', 
 
   const history = page.getByRole('list', { name: 'Historial de movimientos' });
   const arsExpense = history.getByRole('listitem').filter({ hasText: 'ARS 300,00' });
+  await arsExpense.locator('details').first().locator('summary').click();
   await arsExpense.getByRole('button', { name: 'Registrar devolución' }).click();
   const refundForm = page.getByRole('form', { name: 'Registrar devolución' });
   await refundForm.getByLabel('Importe de devolución').fill('100.50');
@@ -332,6 +339,7 @@ test('summarizes a month by currency and category and records partial refunds', 
   await periodInput.fill('2026-07');
   const julyHistory = page.getByRole('list', { name: 'Historial de movimientos' });
   const julyExpense = julyHistory.getByRole('listitem').filter({ hasText: 'ARS 40,00' });
+  await julyExpense.locator('details').first().locator('summary').click();
   await julyExpense.getByRole('button', { name: 'Registrar devolución' }).click();
   const julyRefundForm = page.getByRole('form', { name: 'Registrar devolución' });
   await julyRefundForm.getByLabel('Importe de devolución').fill('40.00');

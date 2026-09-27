@@ -251,7 +251,7 @@ async function signUp(page: Page) {
     .getByRole('form', { name: 'Crear cuenta' })
     .getByRole('button', { name: 'Crear cuenta' })
     .click();
-  await expect(page.getByRole('heading', { name: 'Movimientos' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Inicio' })).toBeVisible();
 }
 
 async function createAccount(
@@ -282,7 +282,7 @@ test('manages financial accounts and records only valid same-currency transfers'
   const backend = await installSupabaseMock(page);
   await signUp(page);
 
-  await page.getByRole('link', { name: 'Cuentas y transferencias' }).click();
+  await page.getByRole('link', { name: 'Cuentas', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Cuentas y transferencias' })).toBeVisible();
 
   await createAccount(page, {
@@ -344,4 +344,11 @@ test('manages financial accounts and records only valid same-currency transfers'
     'ARS 225,50',
   );
   expect(backend.accounts.filter((account) => account.user_id === ownerOne)).toHaveLength(4);
+
+  await page.getByRole('link', { name: 'Inicio', exact: true }).click();
+  const accountSelector = page.getByLabel('Cuenta activa');
+  await expect(accountSelector).toHaveValue(bank.id);
+  await expect(page.getByLabel('Balance actual')).toHaveText('ARS 225,50');
+  await accountSelector.selectOption(cash.id);
+  await expect(page.getByLabel('Balance actual')).toHaveText('ARS 874,50');
 });

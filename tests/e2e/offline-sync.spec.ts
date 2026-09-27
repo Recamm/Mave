@@ -418,7 +418,8 @@ async function signUp(page: Page, email: string, backend: BackendState) {
     .getByRole('form', { name: 'Crear cuenta' })
     .getByRole('button', { name: 'Crear cuenta' })
     .click();
-  await expect(page.getByRole('heading', { name: 'Movimientos' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Inicio' })).toBeVisible();
+  await page.getByRole('button', { name: 'Nuevo movimiento' }).click();
   await expect(
     page.getByLabel('Categoría', { exact: true }).getByRole('option', { name: 'Alimentación' }),
     JSON.stringify(backend.requests),
@@ -433,6 +434,11 @@ function rowForNote(page: Page, note: string) {
 }
 
 async function submitMovement(page: Page, amount: string, note: string) {
+  const movementDialog = page.getByRole('dialog', { name: 'Registrar un movimiento' });
+  if ((await movementDialog.count()) === 0) {
+    await page.getByRole('button', { name: 'Nuevo movimiento' }).click();
+  }
+  await expect(movementDialog).toBeVisible();
   await page.getByLabel('Importe').fill(amount);
   await page.getByLabel('Categoría', { exact: true }).selectOption(categoryId);
   await page.getByLabel('Nota (opcional)').fill(note);
@@ -492,6 +498,7 @@ test('warns before logout and never exposes a pending movement to another accoun
     logoutWarning = dialog.message();
     await dialog.accept();
   });
+  await page.getByRole('link', { name: 'Perfil', exact: true }).click();
   await page.getByRole('button', { name: 'Cerrar sesión' }).click();
   await expect(page.getByRole('heading', { name: 'Mave' })).toBeVisible();
   expect(logoutWarning).toContain('pendientes');
@@ -508,6 +515,7 @@ test('shows both conflict revisions and applies only the chosen movement', async
   await submitMovement(page, '100.00', 'Gasto en conflicto');
 
   const movementRow = rowForNote(page, 'Gasto en conflicto');
+  await movementRow.locator('details').first().locator('summary').click();
   await expect(movementRow.getByLabel('Estado de sincronización')).toHaveText('Sincronizado');
   await movementRow.getByRole('button', { name: 'Editar movimiento' }).click();
   await page.getByLabel('Importe').fill('125.00');

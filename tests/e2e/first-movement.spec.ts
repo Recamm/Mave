@@ -168,6 +168,11 @@ test('registers a first movement, edits and deletes it, and manages categories',
       return;
     }
 
+    if (url.pathname === '/rest/v1/transfers' && request.method() === 'GET') {
+      await respond([]);
+      return;
+    }
+
     if (url.pathname === '/rest/v1/refunds' && request.method() === 'GET') {
       await respond([]);
       return;
@@ -231,7 +236,16 @@ test('registers a first movement, edits and deletes it, and manages categories',
     .getByRole('button', { name: 'Crear cuenta' })
     .click();
 
-  await expect(page.getByRole('heading', { name: 'Movimientos' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Inicio' })).toBeVisible();
+  const initialViewport = page.viewportSize();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole('button', { name: 'Nuevo movimiento' })).toBeVisible();
+  const dashboardDocumentWidth = await page
+    .locator('html')
+    .evaluate((element) => element.scrollWidth);
+  expect(dashboardDocumentWidth).toBeLessThanOrEqual(390);
+  await page.getByRole('button', { name: 'Nuevo movimiento' }).click();
+  await expect(page.getByRole('dialog', { name: 'Registrar un movimiento' })).toBeVisible();
   const dateInput = page.getByLabel('Fecha');
   const today = new Date();
   const proposedDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -244,21 +258,57 @@ test('registers a first movement, edits and deletes it, and manages categories',
   await page.getByLabel('Categoría', { exact: true }).selectOption(foodCategoryId);
   await page.getByRole('button', { name: 'Registrar movimiento' }).click();
 
+  const mobileDocumentWidth = await page.locator('html').evaluate((element) => element.scrollWidth);
+  expect(mobileDocumentWidth).toBeLessThanOrEqual(390);
+  const historyViews = page.getByRole('group', { name: 'Vista del historial' });
+  await historyViews.getByRole('button', { name: 'Por categoría' }).click();
+  const categoryHistory = page.getByRole('list', { name: 'Movimientos por categoría' });
+  const foodGroup = categoryHistory.locator('li.movement-category').filter({
+    hasText: 'Alimentación',
+  });
+  await expect(foodGroup).toContainText('ARS 1.250,50');
+  expect(await page.locator('html').evaluate((element) => element.scrollWidth)).toBeLessThanOrEqual(
+    390,
+  );
+  const foodGroupToggle = foodGroup.getByRole('button');
+  await foodGroupToggle.click();
+  await expect(foodGroupToggle).toHaveAttribute('aria-expanded', 'true');
+  await expect(foodGroup.locator('.movement-category__entries')).toBeVisible();
+  await historyViews.getByRole('button', { name: 'General' }).click();
+  if (initialViewport) {
+    await page.setViewportSize(initialViewport);
+  }
+
   const movementHistory = page.getByRole('list', { name: 'Historial de movimientos' });
   const firstMovement = movementHistory.getByRole('listitem').filter({ hasText: 'Alimentación' });
   await expect(firstMovement).toContainText('ARS 1.250,50');
   await expect(firstMovement.locator('time')).toHaveAttribute('datetime', correctedDateValue);
 
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'Movimientos' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Inicio' })).toBeVisible();
   const movementAfterReload = movementHistory
     .getByRole('listitem')
     .filter({ hasText: 'Alimentación' });
   await expect(movementAfterReload).toContainText('ARS 1.250,50');
+  await movementAfterReload.locator('details').first().locator('summary').click();
   await movementAfterReload.getByRole('button', { name: 'Editar movimiento' }).click();
   await page.getByLabel('Importe').fill('1500.75');
   await page.getByRole('button', { name: 'Guardar cambios' }).click();
   await expect(movementAfterReload).toContainText('ARS 1.500,75');
+
+  await page.getByRole('link', { name: 'Perfil', exact: true }).click();
+  const appearanceSettings = page.getByRole('group', { name: 'Apariencia' });
+  await appearanceSettings.getByRole('radio', { name: 'Clara' }).check();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await appearanceSettings.getByRole('radio', { name: 'Oscura' }).check();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  expect(await page.evaluate(() => localStorage.getItem('mave.appearance'))).toBe('dark');
+  const navigationSettings = page.getByRole('group', { name: 'Barra de navegación' });
+  await navigationSettings.getByRole('radio', { name: 'Flotante' }).check();
+  expect(await page.evaluate(() => localStorage.getItem('mave.mobile-navigation-style'))).toBe(
+    'floating',
+  );
+  await navigationSettings.getByRole('radio', { name: 'Normal' }).check();
 
   await page.getByRole('button', { name: 'Gestionar categorías' }).click();
   const categoryManager = page.getByRole('region', { name: 'Gestionar categorías' });
@@ -273,12 +323,14 @@ test('registers a first movement, edits and deletes it, and manages categories',
   const foodCategory = categoryManager.getByRole('listitem').filter({ hasText: 'Alimentación' });
   await foodCategory.getByRole('button', { name: 'Archivar' }).click();
   await expect(foodCategory).toContainText('Archivada');
+  await page.getByRole('button', { name: 'Cerrar categorías' }).click();
+  await page.getByRole('link', { name: 'Inicio', exact: true }).click();
   await expect(movementAfterReload).toContainText('Alimentación');
+  await page.getByRole('button', { name: 'Nuevo movimiento' }).click();
   await expect(
     page.getByLabel('Categoría', { exact: true }).getByRole('option', { name: 'Alimentación' }),
   ).toHaveCount(0);
 
-  await page.getByRole('button', { name: 'Cerrar categorías' }).click();
   await page.getByLabel('Importe').fill('200');
   await page.getByLabel('Categoría', { exact: true }).selectOption(customCategoryId);
   await page.getByLabel('Nota (opcional)').fill('Compra con tarjeta');
@@ -288,6 +340,7 @@ test('registers a first movement, edits and deletes it, and manages categories',
     .getByRole('listitem')
     .filter({ hasText: 'Compra con tarjeta' });
   await expect(cardExpense).toContainText('Animales');
+  await cardExpense.locator('details').first().locator('summary').click();
   page.on('dialog', (dialog) => dialog.accept());
   await cardExpense.getByRole('button', { name: 'Eliminar movimiento' }).click();
   await expect(cardExpense).toHaveCount(0);

@@ -1,6 +1,6 @@
 # Validación PWA y accesibilidad
 
-**Fecha**: 2026-09-26  
+**Fecha**: 2026-09-27
 **Estado**: validación automatizada completada; verificación manual en dispositivo pendiente.
 
 ## Entorno
@@ -11,7 +11,7 @@
 
 ## Resultados automatizados
 
-- `npm run build`: correcto; genera `dist/service-worker.js`, el manifest y los iconos.
+- `npm run build`: correcto; genera `dist/service-worker.js`, el manifest y los iconos. El bundle JS mide 576.16 kB (165.71 kB gzip) y Vite advierte que supera 500 kB.
 - `npm run test:e2e`: 13 pruebas aprobadas.
 - En viewport de 320 × 720 px, el flujo de acceso no presenta scroll horizontal.
 - El flujo de acceso funciona con teclado y muestra foco visible de 3 px.

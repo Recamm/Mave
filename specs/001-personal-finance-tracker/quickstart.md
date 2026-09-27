@@ -2,19 +2,21 @@
 
 ## Estado actual
 
-Esta guía es parcialmente ejecutable tras completar Setup. Ya existen el shell React/Vite, los scripts npm, las pruebas smoke, CI y la configuración local de Supabase. Aún faltan los flujos funcionales, las migraciones y las pruebas de base de datos; sus comandos y escenarios quedan pendientes de las fases correspondientes.
+La SPA React/Vite, los flujos de producto, las migraciones `0002` a `0009` y las pruebas de cliente están en el repositorio. Esta guía separa la validación local de cliente de la validación del backend: las pruebas Playwright usan configuración de prueba y no certifican un proyecto Supabase remoto, su SMTP ni sus backups.
+
+Los escenarios de escritorio y las pruebas automatizadas no sustituyen la validación manual en Safari de iPhone/VoiceOver ni una restauración real. No usar datos financieros reales en proyectos de prueba.
 
 ## Requisitos previos de implementación
 
-- Node.js `>=22.12.0` y el gestor de paquetes indicado por el lockfile; CI usa Node 24.
-- Supabase CLI y Docker si se ejecuta el stack local de Supabase.
-- Navegador de escritorio actual y Safari en un iPhone real para validar instalación, persistencia y uso offline.
-- Proyecto Supabase de prueba separado del proyecto de producción.
-- Cuenta SMTP de prueba para ejercitar confirmación y recuperación de Auth; el correo predeterminado de Supabase no se considera canal para testers abiertos.
+- Node.js `>=22.12.0` y npm según `package-lock.json`; CI usa Node 24.
+- Supabase CLI y Docker para levantar el stack local y ejecutar migraciones/pgTAP.
+- Chromium para Playwright; Safari en un iPhone real para validar instalación, persistencia y uso offline.
+- Proyecto Supabase de prueba aislado del proyecto de producción si se prueban Auth, SMTP, datos remotos o restauración.
+- Cuenta SMTP controlada si se ejercitan confirmación y recuperación; el SMTP predeterminado de Supabase no es canal para testers abiertos.
 
 ## Configuración y ejecución local
 
-Los scripts npm están definidos en `package.json`. Para validar el scaffold:
+Los scripts npm están definidos en `package.json`. Para validar la aplicación y los flujos de cliente:
 
 ```powershell
 npm ci
@@ -28,11 +30,21 @@ npm run test:e2e
 npm run dev
 ```
 
-Los comandos `supabase start`, `supabase db reset` y `supabase test db` se habilitan al incorporar migraciones y pruebas de base de datos. Ejecutarlos solo contra el stack local/de prueba; nunca ejecutar `supabase db reset` contra datos reales. Las fases posteriores deben agregar pruebas de reglas financieras, sync, constraints, grants, RLS y flujos de producto.
+La configuración de Playwright usa una URL y una publishable key ficticias; no son credenciales ni prueban Auth/SMTP remoto. Los escenarios pgTAP y el comportamiento real de Supabase deben validarse por separado.
+
+Con Docker y Supabase CLI disponibles, los comandos de base de datos son:
+
+```powershell
+supabase start
+supabase db reset
+supabase test db
+```
+
+`supabase db reset` reconstruye la base local y aplica las migraciones. Ejecutarlo únicamente contra el stack local descartable; nunca usarlo contra datos reales. La suite pgTAP se encuentra en `supabase/tests/database/`.
 
 Configurar el entorno local con la URL Supabase y la publishable key, por ejemplo `VITE_SUPABASE_URL` y `VITE_SUPABASE_PUBLISHABLE_KEY`. Son valores destinados al cliente y solo son seguros junto con RLS y grants correctos. No agregar `service_role`, claves secretas ni credenciales SMTP a variables `VITE_*`, al bundle o al repositorio. Las credenciales administrativas de la función programada se configuran como secretos del entorno server-side de Supabase. Mantener `.env.local` fuera del control de versiones.
 
-Antes de activar la migración `0008_schedule_account_deletion.sql`, configurar en el entorno de funciones Edge el secreto `ACCOUNT_DELETION_CRON_SECRET` y crear en Vault los secretos `account_deletion_project_url`, `account_deletion_publishable_key` y `account_deletion_cron_secret`; este último debe coincidir con el secreto de la función. La función usa la clave administrativa solo desde el entorno confiable de Edge. No copiar valores secretos al repositorio, al SQL de la migración ni a variables `VITE_*`.
+Para probar el job programado de `0008_schedule_account_deletion.sql`, preparar valores descartables en el entorno de prueba: `ACCOUNT_DELETION_CRON_SECRET` para la función Edge y `account_deletion_project_url`, `account_deletion_publishable_key` y `account_deletion_cron_secret` en Vault. El secreto de Vault debe coincidir con el de la función. La función usa la clave administrativa solo desde el entorno confiable de Edge. No reutilizar valores de producción ni copiarlos al repositorio, al SQL de la migración o a variables `VITE_*`. Si no se ejecuta el job, registrar el scheduler como no validado.
 
 ## Escenarios de validación
 
@@ -50,9 +62,9 @@ Los importes ARS/USD aceptan como máximo 2 posiciones decimales. Las entradas c
 Cargar un conjunto reproducible con fechas de un mismo período y verificarlo contra cálculo manual:
 
 | Moneda | Ingresos del período | Gastos fechados en el período | Devoluciones recibidas en el período | Transferencias |
-|---|---:|---:|---:|---:|
-| ARS | 1000.00 | 300.00 | 100.00 | 200.00 |
-| USD | 10.00 | 3.00 | 0.00 | 0.00 |
+| ------ | -------------------: | ----------------------------: | -----------------------------------: | -------------: |
+| ARS    |              1000.00 |                        300.00 |                               100.00 |         200.00 |
+| USD    |                10.00 |                          3.00 |                                 0.00 |           0.00 |
 
 Resultado esperado: ingresos ARS 1000.00, gastos netos ARS 200.00 y diferencia neta ARS 800.00; ingresos USD 10.00, gastos USD 3.00 y diferencia neta USD 7.00. Las transferencias no alteran esos totales y ninguna operación combina ARS con USD. Incluir una devolución ligada a un gasto de un período anterior para confirmar que reduce el período de recepción, no el del gasto original, y no se registra como ingreso.
 

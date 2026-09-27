@@ -222,7 +222,7 @@ test('tracks goal contributions without creating movements or changing accounts'
     .getByRole('form', { name: 'Crear cuenta' })
     .getByRole('button', { name: 'Crear cuenta' })
     .click();
-  await expect(page.getByRole('heading', { name: 'Movimientos' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Inicio' })).toBeVisible();
 
   await page.getByRole('link', { name: 'Metas' }).click();
   await expect(page.getByRole('heading', { name: 'Metas de ahorro' })).toBeVisible();

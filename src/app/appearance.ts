@@ -11,7 +11,7 @@ export function getAppearancePreference(
 
   return appearancePreferences.includes(preference as AppearancePreference)
     ? (preference as AppearancePreference)
-    : 'system';
+    : 'dark';
 }
 
 export function saveAppearancePreference(

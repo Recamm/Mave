@@ -25,6 +25,11 @@ test('provides an installable app shell and icon assets', async ({ page }) => {
     const response = await page.request.get(new URL(icon.src, manifestResponse.url()).toString());
     expect(response.ok()).toBe(true);
     const image = await response.body();
+    if (icon.sizes === 'any') {
+      expect(image.toString('utf8')).toContain('<svg');
+      continue;
+    }
+
     const expectedSize = Number.parseInt(icon.sizes, 10);
     expect(image.readUInt32BE(16)).toBe(expectedSize);
     expect(image.readUInt32BE(20)).toBe(expectedSize);
@@ -78,29 +83,10 @@ test('keeps the sign-in flow keyboard accessible at a narrow viewport', async ({
   const documentWidth = await page.evaluate(() => document.documentElement.scrollWidth);
   expect(documentWidth).toBeLessThanOrEqual(320);
 
-  const systemIsDark = await page.evaluate(
-    () => window.matchMedia('(prefers-color-scheme: dark)').matches,
-  );
-  const themes = [
-    { label: 'Clara', resolved: 'light' },
-    { label: 'Oscura', resolved: 'dark' },
-    { label: 'Del sistema', resolved: systemIsDark ? 'dark' : 'light' },
-  ];
+  await expect(page.getByRole('radio', { name: 'Oscura' })).toHaveCount(0);
+  const results = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
+    .analyze();
 
-  for (const theme of themes) {
-    await page.getByRole('radio', { name: theme.label }).check();
-    await expect(page.locator('html')).toHaveAttribute('data-theme', theme.resolved);
-
-    const results = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-
-    expect(results.violations).toEqual([]);
-  }
-
-  await page.getByRole('radio', { name: 'Oscura' }).check();
-  expect(await page.evaluate(() => localStorage.getItem('mave.appearance'))).toBe('dark');
-  await page.reload();
-  await expect(page.getByRole('radio', { name: 'Oscura' })).toBeChecked();
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  expect(results.violations).toEqual([]);
 });

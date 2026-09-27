@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(10);
+select plan(12);
 
 insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at)
 values
@@ -54,6 +54,24 @@ select lives_ok(
     )
   $$,
   'owner one can create a financial account'
+);
+select throws_ok(
+  $$
+    insert into public.financial_accounts (name, kind, currency, opening_balance)
+    values ('Saldo NaN', 'cash', 'ARS', 'NaN'::numeric)
+  $$,
+  '23514',
+  null,
+  'a NaN opening balance is rejected'
+);
+select throws_ok(
+  $$
+    insert into public.financial_accounts (name, kind, currency, opening_balance)
+    values ('Saldo infinito', 'cash', 'ARS', 'Infinity'::numeric)
+  $$,
+  '23514',
+  null,
+  'an infinite opening balance is rejected'
 );
 select is(
   $$

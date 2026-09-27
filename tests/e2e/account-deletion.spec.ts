@@ -201,7 +201,8 @@ async function signUp(page: Page) {
     .getByRole('form', { name: 'Crear cuenta' })
     .getByRole('button', { name: 'Crear cuenta' })
     .click();
-  await expect(page.getByRole('heading', { name: 'Movimientos' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Inicio' })).toBeVisible();
+  await page.getByRole('button', { name: 'Nuevo movimiento' }).click();
   await expect(
     page.getByLabel('Categoría', { exact: true }).getByRole('option', { name: 'Food' }),
   ).toBeAttached();
@@ -215,10 +216,17 @@ function rowForNote(page: Page, note: string) {
 }
 
 async function submitMovement(page: Page, amount: string, note: string) {
+  const movementDialog = page.getByRole('dialog', { name: 'Registrar un movimiento' });
+  if ((await movementDialog.count()) === 0) {
+    await page.getByRole('button', { name: 'Nuevo movimiento' }).click();
+  }
+  await expect(movementDialog).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Registrar un movimiento' })).toBeVisible();
   await page.getByLabel('Importe').fill(amount);
   await page.getByLabel('Categoría', { exact: true }).selectOption(categoryId);
   await page.getByLabel('Nota (opcional)').fill(note);
   await page.getByRole('button', { name: 'Registrar movimiento' }).click();
+  await expect(movementDialog).toHaveCount(0);
 }
 
 test('warns, cancels during grace, then purges pending sync at expiry', async ({ page }) => {
@@ -234,7 +242,7 @@ test('warns, cancels during grace, then purges pending sync at expiry', async ({
   expect(backend.offlineSyncAttempts).toBe(2);
 
   await page.goto('/settings');
-  await expect(page.getByRole('heading', { name: 'Datos y cuenta' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Mi perfil' })).toBeVisible();
   await page.getByRole('button', { name: 'Solicitar eliminación' }).click();
 
   const confirmation = page.getByRole('dialog', { name: 'Confirmar eliminación de cuenta' });

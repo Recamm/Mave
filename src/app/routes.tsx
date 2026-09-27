@@ -1,14 +1,14 @@
-import { useState } from 'react';
-import { Link, NavLink, Outlet, Route, Routes } from 'react-router-dom';
+import { Link, NavLink, Navigate, Outlet, Route, Routes } from 'react-router-dom';
 import { useAuthSession } from './useAuthSession';
 import { FeedbackMessage } from './components/FeedbackMessage';
 import { getAppErrorMessage } from '../lib/errors';
 import { AuthPage } from '../features/auth/AuthPage';
-import { signOutWithPendingWarning } from '../features/auth/logoutService';
 import { MovementList } from '../features/movements/MovementList';
 import { AccountsPage } from '../features/accounts/AccountsPage';
 import { GoalsPage } from '../features/goals/GoalsPage';
 import { AccountSettingsPage } from '../features/account-settings/AccountSettingsPage';
+import brandLogo from '../../info/finanzas-pwa/assets/brand/logo.svg';
+import { House, Landmark, Target, UserRound } from 'lucide-react';
 
 export function AppRoutes() {
   return (
@@ -17,7 +17,8 @@ export function AppRoutes() {
         <Route path="/" element={<MovementList />} />
         <Route path="/accounts" element={<AccountsPage />} />
         <Route path="/goals" element={<GoalsPage />} />
-        <Route path="/settings" element={<AccountSettingsPage />} />
+        <Route path="/profile" element={<AccountSettingsPage />} />
+        <Route path="/settings" element={<Navigate replace to="/profile" />} />
       </Route>
       <Route path="*" element={<NotFoundRoute />} />
     </Routes>
@@ -32,7 +33,7 @@ function SessionRoute() {
   }
 
   if (status === 'authenticated' && session) {
-    return <AuthenticatedHome email={session.user.email ?? ''} ownerId={session.user.id} />;
+    return <AuthenticatedHome />;
   }
 
   return (
@@ -49,44 +50,47 @@ function SessionRoute() {
   );
 }
 
-function AuthenticatedHome({ email, ownerId }: { email: string; ownerId: string }) {
-  const [error, setError] = useState(false);
-
-  async function handleSignOut() {
-    try {
-      await signOutWithPendingWarning(ownerId);
-    } catch {
-      setError(true);
-    }
-  }
-
+function AuthenticatedHome() {
   return (
     <div className="authenticated-home">
       <a className="skip-link" href="#main-content">
         Ir al contenido
       </a>
       <header className="session-strip">
-        {email ? <p>Sesión de {email}</p> : <p>Sesión activa</p>}
-        <button onClick={() => void handleSignOut()} type="button">
-          Cerrar sesión
-        </button>
+        <Link aria-label="Mave, inicio" className="session-brand" to="/">
+          <img alt="" src={brandLogo} />
+          <span>Mave</span>
+        </Link>
+        <nav aria-label="Navegación principal" className="session-navigation">
+          <NavLink end to="/">
+            Inicio
+          </NavLink>
+          <NavLink to="/accounts">Cuentas</NavLink>
+          <NavLink to="/goals">Metas</NavLink>
+          <NavLink to="/profile">Perfil</NavLink>
+        </nav>
       </header>
-      {error ? (
-        <FeedbackMessage tone="error">
-          No se pudo cerrar la sesión. Inténtalo de nuevo.
-        </FeedbackMessage>
-      ) : null}
-      <nav aria-label="Navegación principal" className="session-navigation">
-        <NavLink end to="/">
-          Movimientos
-        </NavLink>
-        <NavLink to="/accounts">Cuentas y transferencias</NavLink>
-        <NavLink to="/goals">Metas</NavLink>
-        <NavLink to="/settings">Datos y privacidad</NavLink>
-      </nav>
       <div id="main-content" tabIndex={-1}>
         <Outlet />
       </div>
+      <nav aria-label="Navegación móvil" className="mobile-navigation">
+        <NavLink end to="/">
+          <House aria-hidden="true" size={20} />
+          <span>Inicio</span>
+        </NavLink>
+        <NavLink to="/accounts">
+          <Landmark aria-hidden="true" size={20} />
+          <span>Cuentas</span>
+        </NavLink>
+        <NavLink to="/goals">
+          <Target aria-hidden="true" size={20} />
+          <span>Metas</span>
+        </NavLink>
+        <NavLink to="/profile">
+          <UserRound aria-hidden="true" size={20} />
+          <span>Perfil</span>
+        </NavLink>
+      </nav>
     </div>
   );
 }
