@@ -6,7 +6,9 @@ import { webLoginService, type WebLoginPushSubscription } from './webLoginServic
 
 type PushSettingsState = 'checking' | 'disabled' | 'enabled' | 'denied' | 'unsupported' | 'error';
 
-const applicationServerKey = import.meta.env.VITE_WEB_PUSH_VAPID_PUBLIC_KEY;
+const applicationServerKey =
+  import.meta.env.VITE_WEB_PUSH_VAPID_PUBLIC_KEY ||
+  'BB90M0jIFd6ZK1lZ_zcxX4cxQZy4a11bV5fAX9P-Iv9ElNrXyi7Ecsc87DTgKoE2FjHSu608NNmSr5ofYpR-O_Y';
 
 export function WebLoginPushSettings() {
   const [state, setState] = useState<PushSettingsState>('checking');
