@@ -1,7 +1,7 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { MemoryRouter, useLocation } from 'react-router-dom';
+import { MemoryRouter } from 'react-router-dom';
 
 const mockAuthState = vi.hoisted(() => ({
   errorCode: null,
@@ -12,15 +12,12 @@ const mockAuthState = vi.hoisted(() => ({
 }));
 
 const mockWebLogin = vi.hoisted(() => ({
-  approve: vi.fn(),
   approveCode: vi.fn(),
-  inspect: vi.fn(),
   listPendingCodeApprovals: vi.fn().mockResolvedValue([]),
   poll: vi.fn(),
   rejectCode: vi.fn(),
   registerPushSubscription: vi.fn(),
   removePushSubscription: vi.fn(),
-  start: vi.fn(),
   startCode: vi.fn(),
 }));
 
@@ -43,15 +40,6 @@ function renderProfile() {
         <AppRoutes />
       </AppPinAccessProvider>
     </MemoryRouter>,
-  );
-}
-
-function LocationProbe() {
-  const location = useLocation();
-  return (
-    <output data-testid="current-location">
-      {`${location.pathname}${location.search}${location.hash}`}
-    </output>
   );
 }
 
@@ -79,65 +67,12 @@ describe('authenticated app PIN gate', () => {
     expect(await screen.findByRole('heading', { name: 'Configuración' })).toBeInTheDocument();
   });
 
-  it('clears the fragment challenge before requiring the local PIN to approve a PC login', async () => {
-    await appPinService.setPin('user-a', '482916');
-
-    render(
-      <MemoryRouter
-        initialEntries={[
-          '/login/approve#request=c22e553d-87b3-44c4-9c0d-0137c8881111&approval=' + 'a'.repeat(64),
-        ]}
-      >
-        <AppPinAccessProvider>
-          <LocationProbe />
-          <AppRoutes />
-        </AppPinAccessProvider>
-      </MemoryRouter>,
-    );
-
-    expect(screen.getByRole('heading', { name: 'Introduce tu PIN' })).toBeInTheDocument();
-    expect(mockWebLogin.inspect).not.toHaveBeenCalled();
-    await waitFor(() => {
-      expect(screen.getByTestId('current-location')).toHaveTextContent('/login/approve');
-      expect(screen.getByTestId('current-location')).not.toHaveTextContent('approval=');
-    });
-  });
-
-  it('opens the approval route when a valid manual code is submitted from Security settings', async () => {
-    const user = userEvent.setup();
-    mockWebLogin.inspect.mockResolvedValue({
-      clientLabel: 'desktop.example.invalid',
-      status: 'pending',
-    });
-
-    render(
-      <MemoryRouter initialEntries={['/profile?section=security']}>
-        <AppPinAccessProvider>
-          <AppRoutes />
-        </AppPinAccessProvider>
-      </MemoryRouter>,
-    );
-
-    await user.type(
-      screen.getByLabelText('Código manual'),
-      'c22e553d-87b3-44c4-9c0d-0137c8881111:' + 'a'.repeat(64),
-    );
-    await user.click(screen.getByRole('button', { name: 'Continuar' }));
-
-    expect(
-      await screen.findByRole('heading', { name: 'Autorizar inicio en PC' }),
-    ).toBeInTheDocument();
-    expect(mockWebLogin.inspect).toHaveBeenCalledWith(
-      'c22e553d-87b3-44c4-9c0d-0137c8881111',
-      'a'.repeat(64),
-    );
-  });
-
   it('shows the recommended setting only while signed in and can enable or disable it', async () => {
     const user = userEvent.setup();
     renderProfile();
 
     await user.click(screen.getByRole('link', { name: /Seguridad/ }));
+    expect(screen.queryByRole('heading', { name: 'Acceso desde PC' })).not.toBeInTheDocument();
     expect(screen.getByText('Recomendado')).toBeInTheDocument();
 
     const toggle = screen.getByRole('checkbox', { name: /Solicitar PIN al abrir Mave/ });

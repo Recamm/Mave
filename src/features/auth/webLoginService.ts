@@ -2,15 +2,6 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseClient } from '../../lib/supabase/client';
 import type { Database } from '../../lib/supabase/database.types';
 
-export type WebLoginRequest = {
-  approvalSecret: string;
-  expiresAt: string;
-  pollSecret: string;
-  requestId: string;
-};
-
-export type WebLoginApprovalChallenge = Pick<WebLoginRequest, 'approvalSecret' | 'requestId'>;
-
 export type WebLoginCodeRequest = {
   code: string;
   expiresAt: string;
@@ -35,68 +26,16 @@ export type WebLoginPushSubscription = {
   keys: { auth: string; p256dh: string };
 };
 
-export type WebLoginInspection = {
-  clientLabel?: string;
-  expiresAt?: string;
-  status: 'pending' | 'approved' | 'expired';
-};
-
 export type WebLoginServiceErrorCode = 'configuration' | 'request';
 
+type WebLoginStatus = 'pending' | 'approved' | 'expired';
+
 const errorMessages: Record<WebLoginServiceErrorCode, string> = {
-  configuration: 'No se pudo configurar el inicio con QR.',
+  configuration: 'No se pudo configurar el inicio de sesión.',
   request: 'No se pudo completar el inicio de sesión. Inténtalo de nuevo.',
 };
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const approvalSecretPattern = /^[0-9a-f]{64}$/i;
-
-export function parseWebLoginApprovalCode(
-  value: string,
-  currentOrigin: string,
-): WebLoginApprovalChallenge | null {
-  const input = value.trim();
-  let requestId: string | null;
-  let approvalSecret: string | null;
-
-  if (/^https?:\/\//i.test(input)) {
-    try {
-      const url = new URL(input);
-      if (url.origin !== currentOrigin || url.pathname !== '/login/approve') {
-        return null;
-      }
-
-      const params = new URLSearchParams(url.hash.slice(1));
-      requestId = params.get('request');
-      approvalSecret = params.get('approval');
-    } catch {
-      return null;
-    }
-  } else {
-    const match = /^([^:.\s]+)[:.]([0-9a-f]{64})$/i.exec(input);
-    requestId = match?.[1] ?? null;
-    approvalSecret = match?.[2] ?? null;
-  }
-
-  if (
-    !requestId ||
-    !approvalSecret ||
-    !uuidPattern.test(requestId) ||
-    !approvalSecretPattern.test(approvalSecret)
-  ) {
-    return null;
-  }
-
-  return { approvalSecret: approvalSecret.toLowerCase(), requestId: requestId.toLowerCase() };
-}
-
-export function createWebLoginApprovalPath(challenge: WebLoginApprovalChallenge): string {
-  const params = new URLSearchParams({
-    approval: challenge.approvalSecret,
-    request: challenge.requestId,
-  });
-  return `/login/approve#${params.toString()}`;
-}
 
 export class WebLoginServiceError extends Error {
   constructor(readonly code: WebLoginServiceErrorCode) {
@@ -125,27 +64,6 @@ export function createWebLoginService(clientProvider: ClientProvider = getSupaba
   }
 
   return {
-    async start(): Promise<WebLoginRequest> {
-      const data = await invoke('start');
-      if (
-        typeof data.requestId !== 'string' ||
-        typeof data.approvalSecret !== 'string' ||
-        typeof data.pollSecret !== 'string' ||
-        typeof data.expiresAt !== 'string' ||
-        !isValidSecret(data.approvalSecret) ||
-        !isValidSecret(data.pollSecret)
-      ) {
-        throw new WebLoginServiceError('request');
-      }
-
-      return {
-        approvalSecret: data.approvalSecret,
-        expiresAt: data.expiresAt,
-        pollSecret: data.pollSecret,
-        requestId: data.requestId,
-      };
-    },
-
     async startCode(email: string): Promise<WebLoginCodeRequest> {
       const data = await invoke('start-code', { email: email.trim() });
       if (
@@ -239,32 +157,6 @@ export function createWebLoginService(clientProvider: ClientProvider = getSupaba
       }
     },
 
-    async inspect(requestId: string, approvalSecret: string): Promise<WebLoginInspection> {
-      const data = await invoke('inspect', { requestId, secret: approvalSecret });
-      const status = parseStatus(data.status);
-      if (!status) {
-        throw new WebLoginServiceError('request');
-      }
-
-      return {
-        clientLabel: typeof data.clientLabel === 'string' ? data.clientLabel : undefined,
-        expiresAt: typeof data.expiresAt === 'string' ? data.expiresAt : undefined,
-        status,
-      };
-    },
-
-    async approve(
-      requestId: string,
-      approvalSecret: string,
-    ): Promise<WebLoginInspection['status']> {
-      const data = await invoke('approve', { requestId, secret: approvalSecret });
-      const status = parseStatus(data.status);
-      if (!status) {
-        throw new WebLoginServiceError('request');
-      }
-      return status;
-    },
-
     async poll(
       requestId: string,
       pollSecret: string,
@@ -310,6 +202,6 @@ function isValidSecret(value: string): boolean {
   return /^[0-9a-f]{64}$/.test(value);
 }
 
-function parseStatus(value: unknown): WebLoginInspection['status'] | null {
+function parseStatus(value: unknown): WebLoginStatus | null {
   return value === 'pending' || value === 'approved' || value === 'expired' ? value : null;
 }

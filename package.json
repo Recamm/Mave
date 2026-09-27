@@ -21,11 +21,9 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
-    "@zxing/browser": "^0.2.1",
     "big.js": "^7.0.1",
     "idb": "^8.0.3",
     "lucide-react": "^1.48.0",
-    "qrcode.react": "^4.2.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-router-dom": "^7.18.4"

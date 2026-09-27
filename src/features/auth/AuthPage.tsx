@@ -2,19 +2,17 @@ import { useState, type FormEvent } from 'react';
 import { FeedbackMessage } from '../../app/components/FeedbackMessage';
 import { AuthServiceError, authService } from './authService';
 import { WebLoginCodePanel } from './WebLoginCodePanel';
-import { WebLoginQrPanel } from './WebLoginQrPanel';
 import brandLogo from '../../../info/finanzas-pwa/assets/brand/logo.svg';
 
-type AuthMode = 'sign-in' | 'sign-up' | 'recovery' | 'qr';
+type AuthMode = 'sign-in' | 'sign-up' | 'recovery';
 
 const modeTitles: Record<AuthMode, string> = {
   'sign-in': 'Iniciar sesión',
   'sign-up': 'Crear cuenta',
   recovery: 'Recuperar contraseña',
-  qr: 'Iniciar sesión con QR',
 };
 
-export function AuthPage({ showQrLogin = true }: { showQrLogin?: boolean } = {}) {
+export function AuthPage() {
   const [mode, setMode] = useState<AuthMode>('sign-in');
   const [loginMethod, setLoginMethod] = useState<'password' | 'code'>('password');
   const [email, setEmail] = useState('');
@@ -32,9 +30,6 @@ export function AuthPage({ showQrLogin = true }: { showQrLogin?: boolean } = {})
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (mode === 'qr') {
-      return;
-    }
 
     setIsSubmitting(true);
     setFeedback(null);
@@ -82,10 +77,7 @@ export function AuthPage({ showQrLogin = true }: { showQrLogin?: boolean } = {})
         </div>
         <p className="auth-intro">Tus movimientos, en un espacio privado.</p>
 
-        <div
-          aria-label="Acceso a Mave"
-          className={showQrLogin ? 'auth-modes auth-modes--qr' : 'auth-modes'}
-        >
+        <div aria-label="Acceso a Mave" className="auth-modes">
           <button
             aria-pressed={mode === 'sign-in'}
             onClick={() => changeMode('sign-in')}
@@ -107,11 +99,6 @@ export function AuthPage({ showQrLogin = true }: { showQrLogin?: boolean } = {})
           >
             Recuperar contraseña
           </button>
-          {showQrLogin ? (
-            <button aria-pressed={mode === 'qr'} onClick={() => changeMode('qr')} type="button">
-              Código QR
-            </button>
-          ) : null}
         </div>
 
         {mode === 'sign-in' ? (
@@ -133,9 +120,7 @@ export function AuthPage({ showQrLogin = true }: { showQrLogin?: boolean } = {})
           </div>
         ) : null}
 
-        {mode === 'qr' ? (
-          <WebLoginQrPanel />
-        ) : mode === 'sign-in' && loginMethod === 'code' ? (
+        {mode === 'sign-in' && loginMethod === 'code' ? (
           <WebLoginCodePanel email={email} onEmailChange={setEmail} />
         ) : (
           <form aria-label={title} onSubmit={handleSubmit}>

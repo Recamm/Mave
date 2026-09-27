@@ -10,7 +10,6 @@ import { useAuthSession } from '../../app/useAuthSession';
 import { ExportDialog } from '../data-export/ExportDialog';
 import { signOutWithPendingWarning } from '../auth/logoutService';
 import { WebLoginPushSettings } from '../auth/WebLoginPushSettings';
-import { WebLoginScanner } from '../auth/WebLoginScanner';
 import { AccountAccessSettings } from './AccountAccessSettings';
 import { AppPinSettings } from './AppPinSettings';
 import { DeletionSettings } from './DeletionSettings';
@@ -183,14 +182,6 @@ export function AccountSettingsSecurityPage() {
         </div>
         <div className="settings-section__content">
           <AppPinSettings />
-        </div>
-      </section>
-      <section aria-labelledby="settings-web-login-title" className="settings-section">
-        <div className="settings-section__heading">
-          <h2 id="settings-web-login-title">Acceso desde PC</h2>
-        </div>
-        <div className="settings-section__content">
-          <WebLoginScanner />
         </div>
       </section>
       <section aria-labelledby="settings-web-login-push-title" className="settings-section">
