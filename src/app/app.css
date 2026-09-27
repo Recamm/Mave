@@ -1349,6 +1349,61 @@ a:focus-visible {
   accent-color: var(--color-green-dark);
 }
 
+.app-icon-settings {
+  display: grid;
+  gap: 0.55rem;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.app-icon-settings legend {
+  margin-bottom: 0.55rem;
+  color: var(--color-muted);
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.app-icon-settings__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.app-icon-settings__options label {
+  display: inline-flex;
+  min-height: 3.25rem;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-control);
+  background: var(--color-paper);
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.app-icon-settings__options input {
+  width: 1rem;
+  min-height: 1rem;
+  margin: 0;
+  accent-color: var(--color-green-dark);
+}
+
+.app-icon-settings__options img {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.35rem;
+  object-fit: cover;
+}
+
+.app-icon-settings__notice {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
 .navigation-style-settings {
   display: grid;
   gap: 0.55rem;

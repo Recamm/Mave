@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "vite --host 127.0.0.1",
+    "icons:generate": "node scripts/generate-app-icons.mjs",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 127.0.0.1",
     "typecheck": "tsc --noEmit",
@@ -47,6 +48,7 @@
     "globals": "^16.3.0",
     "jsdom": "^26.1.0",
     "prettier": "^3.6.2",
+    "sharp": "^0.35.5",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.70.1",
     "vite": "^7.1.3",

@@ -31,6 +31,8 @@ worker.addEventListener('install', (event) => {
         new URL('icons/icon-192.png', appScope).toString(),
         new URL('icons/icon-512.png', appScope).toString(),
         new URL('icons/apple-touch-icon.png', appScope).toString(),
+        new URL('icons/apple-touch-icon-dark.png', appScope).toString(),
+        new URL('icons/apple-touch-icon-light.png', appScope).toString(),
       ]);
       await worker.skipWaiting();
     })(),

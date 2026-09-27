@@ -73,6 +73,9 @@ test('provides an installable app shell and icon assets', async ({ page }) => {
 
   expect(registration?.scriptUrl).toContain('/service-worker.js');
   expect(registration?.cachedUrls).toContain(new URL('./', manifestResponse.url()).toString());
+  for (const icon of ['./icons/apple-touch-icon-dark.png', './icons/apple-touch-icon-light.png']) {
+    expect(registration?.cachedUrls).toContain(new URL(icon, manifestResponse.url()).toString());
+  }
   expect(registration?.cachedUrls.some((url) => /\/(rest|auth|functions)\/v1\//.test(url))).toBe(
     false,
   );

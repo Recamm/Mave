@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './app/App';
+import { applyAppIconPreference, getAppIconPreference } from './app/appIcon';
 import { applyAppearancePreference, getAppearancePreference } from './app/appearance';
 import { applyMobileNavigationStyle, getMobileNavigationStyle } from './app/mobileNavigation';
 import { registerServiceWorker } from './service-worker-registration';
@@ -13,6 +14,7 @@ if (!rootElement) {
 }
 
 applyAppearancePreference(getAppearancePreference());
+applyAppIconPreference(getAppIconPreference());
 applyMobileNavigationStyle(getMobileNavigationStyle());
 registerServiceWorker();
 

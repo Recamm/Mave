@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { AppIconSettings } from '../../app/components/AppIconSettings';
 import { FeedbackMessage } from '../../app/components/FeedbackMessage';
 import { MobileNavigationSettings } from '../../app/components/MobileNavigationSettings';
 import { MovementTypeDisplaySettings } from '../../app/components/MovementTypeDisplaySettings';
@@ -91,6 +92,7 @@ export function AccountSettingsPage() {
       </section>
 
       <section aria-label="Preferencias">
+        <AppIconSettings />
         <AppearanceSettings />
         <MobileNavigationSettings />
         <MovementTypeDisplaySettings />

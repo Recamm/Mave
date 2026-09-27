@@ -298,6 +298,37 @@ test('registers a first movement, edits and deletes it, and manages categories',
   await expect(movementAfterReload).toContainText('ARS 1.500,75');
 
   await page.getByRole('link', { name: 'Perfil', exact: true }).click();
+  const appIconSettings = page.getByRole('group', { name: 'Icono de inicio' });
+  await expect
+    .poll(() =>
+      appIconSettings
+        .locator('img')
+        .evaluateAll((images) => images.map((image) => (image as HTMLImageElement).naturalWidth)),
+    )
+    .toEqual([180, 180]);
+  await appIconSettings.getByRole('radio', { name: 'Claro' }).check();
+  expect(await page.evaluate(() => localStorage.getItem('mave.app-icon'))).toBe('light');
+  await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute(
+    'href',
+    './icons/apple-touch-icon-light.png',
+  );
+  await appIconSettings.getByRole('radio', { name: 'Oscuro' }).check();
+  expect(await page.evaluate(() => localStorage.getItem('mave.app-icon'))).toBe('dark');
+  await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute(
+    'href',
+    './icons/apple-touch-icon-dark.png',
+  );
+  await expect(appIconSettings.getByText(/elimina Mave.*vuelve a añadirla/i)).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Mi perfil' })).toBeVisible();
+  await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute(
+    'href',
+    './icons/apple-touch-icon-dark.png',
+  );
+  await expect(
+    page.getByRole('group', { name: 'Icono de inicio' }).getByRole('radio', { name: 'Oscuro' }),
+  ).toBeChecked();
+
   const appearanceSettings = page.getByRole('group', { name: 'Apariencia' });
   await appearanceSettings.getByRole('radio', { name: 'Clara' }).check();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
