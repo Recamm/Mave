@@ -1,5 +1,5 @@
 <p align="center">
-	<img src="info/finanzas-pwa/assets/brand/logo.png" alt="Símbolo de Mave" width="112" />
+	<img src="info/finanzas-pwa/assets/brand/maveBanner.png" alt="Mave, finanzas personales con claridad" />
 </p>
 
 # Mave
