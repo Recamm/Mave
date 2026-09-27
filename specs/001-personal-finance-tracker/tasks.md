@@ -1,6 +1,5 @@
 ---
-
-description: "Lista de tareas para implementar Mave"
+description: 'Lista de tareas para implementar Mave'
 ---
 
 # Tasks: Mave - Finanzas personales
@@ -21,9 +20,9 @@ Cada tarea usa `- [ ] Tnnn [P?] [USn?] descripción con rutas`. `[P]` indica tra
 
 **Propósito**: inicializar la SPA y las herramientas locales compartidas.
 
-- [X] T001 Inicializar el proyecto estático React, TypeScript y Vite con `package.json`, `index.html`, `vite.config.ts`, `tsconfig.json`, `src/main.tsx` y `src/app/App.tsx`; añadir scripts `dev`, `build` y `typecheck`.
-- [X] T002 Configurar lint, formato y pruebas con ESLint, Prettier, Vitest, Testing Library, Playwright y `@axe-core/playwright` en `package.json`, `eslint.config.js`, `prettier.config.js`, `vitest.config.ts`, `playwright.config.ts`, `tests/setup.ts` y `.github/workflows/ci.yml`; definir scripts repetibles de test y build.
-- [X] T003 [P] Configurar Supabase local y variables de cliente no secretas en `supabase/config.toml`, `.env.example` y `.gitignore`; documentar `VITE_SUPABASE_URL` y `VITE_SUPABASE_PUBLISHABLE_KEY`, y excluir `.env.local` y toda clave administrativa.
+- [x] T001 Inicializar el proyecto estático React, TypeScript y Vite con `package.json`, `index.html`, `vite.config.ts`, `tsconfig.json`, `src/main.tsx` y `src/app/App.tsx`; añadir scripts `dev`, `build` y `typecheck`.
+- [x] T002 Configurar lint, formato y pruebas con ESLint, Prettier, Vitest, Testing Library, Playwright y `@axe-core/playwright` en `package.json`, `eslint.config.js`, `prettier.config.js`, `vitest.config.ts`, `playwright.config.ts`, `tests/setup.ts` y `.github/workflows/ci.yml`; definir scripts repetibles de test y build.
+- [x] T003 [P] Configurar Supabase local y variables de cliente no secretas en `supabase/config.toml`, `.env.example` y `.gitignore`; documentar `VITE_SUPABASE_URL` y `VITE_SUPABASE_PUBLISHABLE_KEY`, y excluir `.env.local` y toda clave administrativa.
 
 ---
 
@@ -31,11 +30,11 @@ Cada tarea usa `- [ ] Tnnn [P?] [USn?] descripción con rutas`. `[P]` indica tra
 
 **Propósito**: resolver la única decisión de datos que bloquea importes y preparar servicios comunes antes de las historias.
 
-- [X] T004 Confirmar con la persona responsable de producto la escala decimal máxima y si se rechaza o redondea una entrada con más decimales; registrar la decisión en `specs/001-personal-finance-tracker/data-model.md` y `specs/001-personal-finance-tracker/quickstart.md` antes de implementar parsers monetarios.
-- [X] T005 [P] Escribir pruebas unitarias que fallen para parseo decimal desde texto, suma/comparación exactas, serialización y el comportamiento de precisión acordado en `tests/unit/money/decimal.test.ts`.
-- [X] T006 Implementar operaciones decimales exactas con `big.js` en `src/lib/money/decimal.ts`, guardar los importes como texto en las fronteras JSON y añadir la dependencia en `package.json`; satisfacer las pruebas de `tests/unit/money/decimal.test.ts` sin usar `Number` para aritmética monetaria.
-- [X] T007 [P] Crear el cliente tipado de Supabase y el proveedor de sesión en `src/lib/supabase/client.ts`, `src/lib/supabase/database.types.ts` y `src/app/AuthSessionProvider.tsx`; leer solo URL y publishable key del cliente, nunca una clave secreta.
-- [X] T008 Implementar rutas base, estado de sesión y mensajes de error accesibles en `src/app/App.tsx`, `src/app/routes.tsx`, `src/app/components/FeedbackMessage.tsx` y `src/lib/errors.ts`; no incluir importes, notas ni payloads financieros en logs de diagnóstico.
+- [x] T004 Confirmar con la persona responsable de producto la escala decimal máxima y si se rechaza o redondea una entrada con más decimales; registrar la decisión en `specs/001-personal-finance-tracker/data-model.md` y `specs/001-personal-finance-tracker/quickstart.md` antes de implementar parsers monetarios.
+- [x] T005 [P] Escribir pruebas unitarias que fallen para parseo decimal desde texto, suma/comparación exactas, serialización y el comportamiento de precisión acordado en `tests/unit/money/decimal.test.ts`.
+- [x] T006 Implementar operaciones decimales exactas con `big.js` en `src/lib/money/decimal.ts`, guardar los importes como texto en las fronteras JSON y añadir la dependencia en `package.json`; satisfacer las pruebas de `tests/unit/money/decimal.test.ts` sin usar `Number` para aritmética monetaria.
+- [x] T007 [P] Crear el cliente tipado de Supabase y el proveedor de sesión en `src/lib/supabase/client.ts`, `src/lib/supabase/database.types.ts` y `src/app/AuthSessionProvider.tsx`; leer solo URL y publishable key del cliente, nunca una clave secreta.
+- [x] T008 Implementar rutas base, estado de sesión y mensajes de error accesibles en `src/app/App.tsx`, `src/app/routes.tsx`, `src/app/components/FeedbackMessage.tsx` y `src/lib/errors.ts`; no incluir importes, notas ni payloads financieros en logs de diagnóstico.
 
 **Checkpoint**: la SPA compila, las pruebas corren localmente, el cliente no contiene secretos y la política de precisión quedó acordada antes de crear operaciones monetarias.
 
@@ -49,17 +48,17 @@ Cada tarea usa `- [ ] Tnnn [P?] [USn?] descripción con rutas`. `[P]` indica tra
 
 ### Tests for User Story 1
 
-- [X] T009 [P] [US1] Escribir pruebas de fecha local y captura de importe/moneda en `tests/unit/movements/movement-input.test.ts`; verificar que la fecha local se propone y se puede corregir, ARS es el valor inicial y solo se aceptan importes positivos en ARS o USD.
-- [X] T010 [P] [US1] Escribir pruebas pgTAP que fallen para lecturas, escrituras y referencias entre dos propietarios en `supabase/tests/database/ledger-rls.test.sql`; cubrir categorías, cuentas financieras y movimientos sin confiar en filtros del cliente.
-- [X] T011 [P] [US1] Escribir la prueba end-to-end del alta, primer gasto, consulta, edición, borrado y gestión de categorías en `tests/e2e/first-movement.spec.ts`; cubrir cuenta y nota opcionales, fecha propuesta, compra con tarjeta como gasto común, y categoría archivada conservada en el historial.
+- [x] T009 [P] [US1] Escribir pruebas de fecha local y captura de importe/moneda en `tests/unit/movements/movement-input.test.ts`; verificar que la fecha local se propone y se puede corregir, ARS es el valor inicial y solo se aceptan importes positivos en ARS o USD.
+- [x] T010 [P] [US1] Escribir pruebas pgTAP que fallen para lecturas, escrituras y referencias entre dos propietarios en `supabase/tests/database/ledger-rls.test.sql`; cubrir categorías, cuentas financieras y movimientos sin confiar en filtros del cliente.
+- [x] T011 [P] [US1] Escribir la prueba end-to-end del alta, primer gasto, consulta, edición, borrado y gestión de categorías en `tests/e2e/first-movement.spec.ts`; cubrir cuenta y nota opcionales, fecha propuesta, compra con tarjeta como gasto común, y categoría archivada conservada en el historial.
 
 ### Implementation for User Story 1
 
 - [ ] T012 [US1] Crear `supabase/migrations/0002_ledger_core.sql` con categorías privadas, cuentas financieras, movimientos y la tabla de transferencias necesaria para excluirlas de resúmenes. Aplicar RLS y grants mínimos. Conservar estas reglas del modelo: `kind` es `income` o `expense`; `amount` es `numeric` estrictamente mayor que cero; `currency` es `ARS` o `USD`; `category_id` pertenece al mismo propietario; `financial_account_id` es opcional; `note` es opcional; `opening_balance` es opcional y null se interpreta como cero; `source` es `default` o `custom`; una categoría archivada no se ofrece para asignaciones nuevas. Sembrar el catálogo inicial propio por usuario sin cambiar asignaciones históricas.
-- [X] T013 [P] [US1] Implementar alta, confirmación de correo, inicio/cierre de sesión y recuperación con Supabase Auth en `src/features/auth/authService.ts` y `src/features/auth/AuthPage.tsx`; rechazar alta sin conexión y mantener la contraseña fuera de tablas de Mave.
-- [X] T014 [P] [US1] Implementar lectura, creación, renombrado y archivo de categorías propias en `src/features/categories/categoryService.ts` y `src/features/categories/CategoryManager.tsx`; excluir archivadas de nuevas asignaciones y conservar sus referencias históricas.
-- [X] T015 [P] [US1] Implementar persistencia online de movimientos con importes decimales como texto, fecha civil local, moneda, categoría y cuenta opcional en `src/features/movements/movementService.ts`; propagar errores de RLS y no duplicar validaciones monetarias con punto flotante.
-- [X] T016 [US1] Implementar formulario y lista de movimientos con alta, consulta, edición y borrado en `src/features/movements/MovementForm.tsx` y `src/features/movements/MovementList.tsx`; proponer fecha local y ARS, permitir corregir la fecha y registrar compras con tarjeta como gastos comunes.
+- [x] T013 [P] [US1] Implementar alta, confirmación de correo, inicio/cierre de sesión y recuperación con Supabase Auth en `src/features/auth/authService.ts` y `src/features/auth/AuthPage.tsx`; rechazar alta sin conexión y mantener la contraseña fuera de tablas de Mave.
+- [x] T014 [P] [US1] Implementar lectura, creación, renombrado y archivo de categorías propias en `src/features/categories/categoryService.ts` y `src/features/categories/CategoryManager.tsx`; excluir archivadas de nuevas asignaciones y conservar sus referencias históricas.
+- [x] T015 [P] [US1] Implementar persistencia online de movimientos con importes decimales como texto, fecha civil local, moneda, categoría y cuenta opcional en `src/features/movements/movementService.ts`; propagar errores de RLS y no duplicar validaciones monetarias con punto flotante.
+- [x] T016 [US1] Implementar formulario y lista de movimientos con alta, consulta, edición y borrado en `src/features/movements/MovementForm.tsx` y `src/features/movements/MovementList.tsx`; proponer fecha local y ARS, permitir corregir la fecha y registrar compras con tarjeta como gastos comunes.
 
 **Checkpoint**: completar el Independent Test de US1 y los escenarios de `tests/e2e/first-movement.spec.ts` antes de iniciar integración de las historias dependientes.
 
@@ -73,15 +72,15 @@ Cada tarea usa `- [ ] Tnnn [P?] [USn?] descripción con rutas`. `[P]` indica tra
 
 ### Tests for User Story 2
 
-- [X] T017 [P] [US2] Escribir pruebas unitarias que fallen para ingresos, gastos netos, diferencia, agrupación por categoría/moneda, período vacío y exclusión de transferencias en `tests/unit/summaries/period-summary.test.ts`; verificar que una devolución afecta su período de recepción y nunca cuenta como ingreso.
+- [x] T017 [P] [US2] Escribir pruebas unitarias que fallen para ingresos, gastos netos, diferencia, agrupación por categoría/moneda, período vacío y exclusión de transferencias en `tests/unit/summaries/period-summary.test.ts`; verificar que una devolución afecta su período de recepción y nunca cuenta como ingreso.
 - [ ] T018 [P] [US2] Escribir pruebas pgTAP que fallen para devoluciones propias y concurrentes en `supabase/tests/database/refunds.test.sql`; cubrir gasto padre obligatorio, devolución positiva, misma moneda/categoría/cuenta heredadas y rechazo de suma devuelta mayor al importe pendiente.
-- [X] T019 [P] [US2] Escribir la prueba end-to-end del historial y resumen mensual en `tests/e2e/period-summary.spec.ts`; cubrir cambio de período, estado vacío, agrupación y devolución parcial.
+- [x] T019 [P] [US2] Escribir la prueba end-to-end del historial y resumen mensual en `tests/e2e/period-summary.spec.ts`; cubrir cambio de período, estado vacío, agrupación y devolución parcial.
 
 ### Implementation for User Story 2
 
-- [X] T020 [US2] Crear `supabase/migrations/0003_refunds.sql` con la tabla y RPC transaccional `record_refund`. Conservar las restricciones del modelo: `amount` es `numeric` mayor que cero; `expense_id` referencia un gasto del mismo propietario; `received_on` determina el período que reduce; moneda, categoría y cuenta se derivan del gasto original; la suma de devoluciones activas no puede superar el importe del gasto. Serializar cambios concurrentes por gasto y hacer idempotentes los reintentos.
-- [X] T021 [P] [US2] Implementar alta, consulta, edición y borrado de devoluciones vinculadas al gasto en `src/features/movements/refundService.ts` y `src/features/movements/RefundForm.tsx`; enviar solo importe positivo y fecha de recepción, y mostrar los datos heredados sin permitir alterarlos.
-- [X] T022 [P] [US2] Implementar cálculo y consulta del resumen y el historial por período en `src/features/summaries/periodSummary.ts`, `src/features/summaries/summaryService.ts`, `src/features/summaries/PeriodSummaryView.tsx` y `src/features/summaries/MovementHistory.tsx`; separar ARS/USD, restar devoluciones recibidas en el período, excluir la tabla de transferencias y presentar un estado vacío claro.
+- [x] T020 [US2] Crear `supabase/migrations/0003_refunds.sql` con la tabla y RPC transaccional `record_refund`. Conservar las restricciones del modelo: `amount` es `numeric` mayor que cero; `expense_id` referencia un gasto del mismo propietario; `received_on` determina el período que reduce; moneda, categoría y cuenta se derivan del gasto original; la suma de devoluciones activas no puede superar el importe del gasto. Serializar cambios concurrentes por gasto y hacer idempotentes los reintentos.
+- [x] T021 [P] [US2] Implementar alta, consulta, edición y borrado de devoluciones vinculadas al gasto en `src/features/movements/refundService.ts` y `src/features/movements/RefundForm.tsx`; enviar solo importe positivo y fecha de recepción, y mostrar los datos heredados sin permitir alterarlos.
+- [x] T022 [P] [US2] Implementar cálculo y consulta del resumen y el historial por período en `src/features/summaries/periodSummary.ts`, `src/features/summaries/summaryService.ts`, `src/features/summaries/PeriodSummaryView.tsx` y `src/features/summaries/MovementHistory.tsx`; separar ARS/USD, restar devoluciones recibidas en el período, excluir la tabla de transferencias y presentar un estado vacío claro.
 
 **Checkpoint**: probar SC-003 y el Independent Test de US2 con el conjunto reproducible de `specs/001-personal-finance-tracker/quickstart.md`.
 
@@ -95,16 +94,16 @@ Cada tarea usa `- [ ] Tnnn [P?] [USn?] descripción con rutas`. `[P]` indica tra
 
 ### Tests for User Story 3
 
-- [X] T023 [P] [US3] Escribir pruebas unitarias que fallen para persistencia, partición por propietario, estados, reintentos y deduplicación de la outbox en `tests/unit/sync/outbox.test.ts`.
+- [x] T023 [P] [US3] Escribir pruebas unitarias que fallen para persistencia, partición por propietario, estados, reintentos y deduplicación de la outbox en `tests/unit/sync/outbox.test.ts`.
 - [ ] T024 [P] [US3] Escribir pruebas pgTAP que fallen para `client_operation_id`, concurrencia optimista, snapshots y resolución de conflictos en `supabase/tests/database/movement-sync.test.sql`; verificar que un conflicto abierto cuenta el movimiento una sola vez.
-- [X] T025 [P] [US3] Escribir pruebas end-to-end que fallen para captura offline, recarga, reconexión, reintentos y logout con pendientes en `tests/e2e/offline-sync.spec.ts`; verificar que otra cuenta no puede ver ni enviar la outbox.
+- [x] T025 [P] [US3] Escribir pruebas end-to-end que fallen para captura offline, recarga, reconexión, reintentos y logout con pendientes en `tests/e2e/offline-sync.spec.ts`; verificar que otra cuenta no puede ver ni enviar la outbox.
 
 ### Implementation for User Story 3
 
 - [ ] T026 [US3] Crear `supabase/migrations/0004_sync_conflicts.sql` con operaciones idempotentes, revisiones optimistas y snapshots inmutables del movimiento en conflicto. Conservar las reglas del modelo: el conflicto tiene estado `open` o `resolved`, snapshots de versiones incompatibles y una elección; los snapshots alternativos abiertos no se agregan a resúmenes; solo la versión elegida afecta saldos; no sobrescribir ni descartar cambios en silencio. Restringir filas y funciones al propietario.
-- [X] T027 [P] [US3] Implementar la outbox IndexedDB en `src/features/sync/outbox.ts`, particionada por propietario y operación UUID estable; conservar `expected_version`, importes como texto y estados `pending`, `sending`, `retry`, `conflict` o `blocked`; no reasignar pendientes a la siguiente cuenta del dispositivo.
-- [X] T028 [US3] Implementar sincronización idempotente y detección de versiones incompatibles en `src/features/sync/syncEngine.ts`; ejecutar al abrir o volver a primer plano, actualizar el estado visible y no prometer trabajo en segundo plano con la PWA cerrada en iOS.
-- [X] T029 [US3] Implementar comparación/elección explícita de versiones y advertencia de logout con pendientes en `src/features/sync/ConflictResolver.tsx` y `src/features/auth/logoutService.ts`; preservar ambas versiones hasta la elección, contar una sola y ocultar la outbox a cualquier otra cuenta.
+- [x] T027 [P] [US3] Implementar la outbox IndexedDB en `src/features/sync/outbox.ts`, particionada por propietario y operación UUID estable; conservar `expected_version`, importes como texto y estados `pending`, `sending`, `retry`, `conflict` o `blocked`; no reasignar pendientes a la siguiente cuenta del dispositivo.
+- [x] T028 [US3] Implementar sincronización idempotente y detección de versiones incompatibles en `src/features/sync/syncEngine.ts`; ejecutar al abrir o volver a primer plano, actualizar el estado visible y no prometer trabajo en segundo plano con la PWA cerrada en iOS.
+- [x] T029 [US3] Implementar comparación/elección explícita de versiones y advertencia de logout con pendientes en `src/features/sync/ConflictResolver.tsx` y `src/features/auth/logoutService.ts`; preservar ambas versiones hasta la elección, contar una sola y ocultar la outbox a cualquier otra cuenta.
 
 **Checkpoint**: completar `tests/e2e/offline-sync.spec.ts` en navegador y Safari de iPhone; documentar que los datos locales no son backup y que iOS no garantiza sync con la app cerrada.
 
@@ -119,13 +118,13 @@ Cada tarea usa `- [ ] Tnnn [P?] [USn?] descripción con rutas`. `[P]` indica tra
 ### Tests for User Story 4
 
 - [ ] T030 [P] [US4] Escribir pruebas pgTAP y de integración que fallen para cuentas y transferencias en `supabase/tests/database/transfers.test.sql` y `tests/integration/transfer-summary.test.ts`; cubrir propietario, cuentas distintas, misma moneda, atomicidad, saldos y exclusión de ingresos/gastos.
-- [X] T031 [P] [US4] Escribir la prueba end-to-end de gestión de cuentas y transferencias en `tests/e2e/accounts-transfers.spec.ts`; cubrir efectivo/banco/billetera/otra fuente, moneda, saldo inicial opcional y rechazo de cuentas ajenas o monedas distintas.
+- [x] T031 [P] [US4] Escribir la prueba end-to-end de gestión de cuentas y transferencias en `tests/e2e/accounts-transfers.spec.ts`; cubrir efectivo/banco/billetera/otra fuente, moneda, saldo inicial opcional y rechazo de cuentas ajenas o monedas distintas.
 
 ### Implementation for User Story 4
 
-- [X] T032 [US4] Añadir en `supabase/migrations/0005_transfer_operations.sql` la RPC transaccional `record_transfer`; exigir importe positivo, cuentas de origen/destino propias y distintas, misma moneda, UUID idempotente y ausencia de efectos parciales. Mantener la transferencia fuera de ingresos y gastos.
-- [X] T033 [P] [US4] Implementar alta y consulta de cuentas y saldo derivado en `src/features/accounts/accountService.ts`, `src/features/accounts/accountBalance.ts` y `src/features/accounts/AccountsPage.tsx`; aplicar saldo inicial o cero, ingresos, gastos, devoluciones asociadas y transferencias recibidas/enviadas sin mutar saldos como fuente paralela.
-- [X] T034 [US4] Implementar registro e historial de transferencias mediante la RPC en `src/features/accounts/transferService.ts`, `src/features/accounts/TransferForm.tsx` y `src/features/accounts/TransferHistory.tsx`; rechazar origen igual a destino, cuenta ajena o moneda distinta sin conversión automática.
+- [x] T032 [US4] Añadir en `supabase/migrations/0005_transfer_operations.sql` la RPC transaccional `record_transfer`; exigir importe positivo, cuentas de origen/destino propias y distintas, misma moneda, UUID idempotente y ausencia de efectos parciales. Mantener la transferencia fuera de ingresos y gastos.
+- [x] T033 [P] [US4] Implementar alta y consulta de cuentas y saldo derivado en `src/features/accounts/accountService.ts`, `src/features/accounts/accountBalance.ts` y `src/features/accounts/AccountsPage.tsx`; aplicar saldo inicial o cero, ingresos, gastos, devoluciones asociadas y transferencias recibidas/enviadas sin mutar saldos como fuente paralela.
+- [x] T034 [US4] Implementar registro e historial de transferencias mediante la RPC en `src/features/accounts/transferService.ts`, `src/features/accounts/TransferForm.tsx` y `src/features/accounts/TransferHistory.tsx`; rechazar origen igual a destino, cuenta ajena o moneda distinta sin conversión automática.
 
 **Checkpoint**: completar el Independent Test y confirmar que T030 pasa, incluidos los casos de transferencia que no altera los totales de US2.
 
@@ -140,13 +139,13 @@ Cada tarea usa `- [ ] Tnnn [P?] [USn?] descripción con rutas`. `[P]` indica tra
 ### Tests for User Story 5
 
 - [ ] T035 [P] [US5] Escribir pruebas pgTAP que fallen para metas y aportes en `supabase/tests/database/goals.test.sql`; cubrir dueño, `target_amount` positivo, `currency` ARS/USD, fecha opcional, aporte positivo y moneda heredada de la meta.
-- [X] T036 [P] [US5] Escribir la prueba end-to-end que falle para crear meta, agregar aporte y comprobar progreso en `tests/e2e/goals.spec.ts`; verificar que no cambia movimientos ni saldos de cuentas.
+- [x] T036 [P] [US5] Escribir la prueba end-to-end que falle para crear meta, agregar aporte y comprobar progreso en `tests/e2e/goals.spec.ts`; verificar que no cambia movimientos ni saldos de cuentas.
 
 ### Implementation for User Story 5
 
-- [X] T037 [US5] Crear `supabase/migrations/0006_goals.sql` con tablas RLS de metas y aportes; conservar las reglas del modelo: meta con nombre, `target_amount` `numeric` mayor que cero, moneda `ARS` o `USD` y fecha opcional; aporte con importe `numeric` mayor que cero, `goal_id` del mismo propietario y moneda heredada de la meta. Los aportes no generan movimientos ni cambian saldos.
-- [X] T038 [US5] Implementar persistencia y progreso derivado de meta en `src/features/goals/goalService.ts`; sumar aportes activos con aritmética exacta y sin escribir en movimientos o cuentas.
-- [X] T039 [US5] Implementar vistas y formularios de metas/aportes en `src/features/goals/GoalsPage.tsx` y `src/features/goals/GoalContributionForm.tsx`; permitir fecha objetivo opcional y mostrar moneda y progreso sin conversión automática.
+- [x] T037 [US5] Crear `supabase/migrations/0006_goals.sql` con tablas RLS de metas y aportes; conservar las reglas del modelo: meta con nombre, `target_amount` `numeric` mayor que cero, moneda `ARS` o `USD` y fecha opcional; aporte con importe `numeric` mayor que cero, `goal_id` del mismo propietario y moneda heredada de la meta. Los aportes no generan movimientos ni cambian saldos.
+- [x] T038 [US5] Implementar persistencia y progreso derivado de meta en `src/features/goals/goalService.ts`; sumar aportes activos con aritmética exacta y sin escribir en movimientos o cuentas.
+- [x] T039 [US5] Implementar vistas y formularios de metas/aportes en `src/features/goals/GoalsPage.tsx` y `src/features/goals/GoalContributionForm.tsx`; permitir fecha objetivo opcional y mostrar moneda y progreso sin conversión automática.
 
 **Checkpoint**: completar `tests/e2e/goals.spec.ts` y las pruebas de invariantes de `supabase/tests/database/goals.test.sql`.
 
@@ -160,19 +159,19 @@ Cada tarea usa `- [ ] Tnnn [P?] [USn?] descripción con rutas`. `[P]` indica tra
 
 ### Tests for User Story 6
 
-- [X] T040 [P] [US6] Escribir pruebas unitarias que fallen para CSV/JSON en `tests/unit/export/serialization.test.ts`; comprobar importes decimales exactos como texto, fechas, identificadores y relaciones.
-- [X] T041 [P] [US6] Escribir pruebas pgTAP que fallen para solicitud, cancelación, vencimiento, autorización y rechazo de sync en `supabase/tests/database/account-deletion.test.sql`; usar reloj controlado y probar que el vencimiento se calcula en servidor a 30 días calendario.
-- [X] T042 [P] [US6] Escribir la prueba end-to-end de exportación y aislamiento en `tests/e2e/export.spec.ts`; verificar CSV y JSON para todos los datos del usuario sin filtrar información de otra cuenta.
-- [X] T043 [P] [US6] Escribir la prueba end-to-end de ciclo de eliminación en `tests/e2e/account-deletion.spec.ts`; cubrir aviso de dispositivos offline, estado/vencimiento, cancelación y pendientes al vencer con reloj controlado.
+- [x] T040 [P] [US6] Escribir pruebas unitarias que fallen para CSV/JSON en `tests/unit/export/serialization.test.ts`; comprobar importes decimales exactos como texto, fechas, identificadores y relaciones.
+- [x] T041 [P] [US6] Escribir pruebas pgTAP que fallen para solicitud, cancelación, vencimiento, autorización y rechazo de sync en `supabase/tests/database/account-deletion.test.sql`; usar reloj controlado y probar que el vencimiento se calcula en servidor a 30 días calendario.
+- [x] T042 [P] [US6] Escribir la prueba end-to-end de exportación y aislamiento en `tests/e2e/export.spec.ts`; verificar CSV y JSON para todos los datos del usuario sin filtrar información de otra cuenta.
+- [x] T043 [P] [US6] Escribir la prueba end-to-end de ciclo de eliminación en `tests/e2e/account-deletion.spec.ts`; cubrir aviso de dispositivos offline, estado/vencimiento, cancelación y pendientes al vencer con reloj controlado.
 
 ### Implementation for User Story 6
 
-- [X] T044 [US6] Crear `supabase/migrations/0007_account_deletion.sql` con estado de ciclo de vida (`deletion_requested_at`, `deletion_due_at`, `deletion_canceled_at`, `deletion_started_at`), RPC de solicitud/cancelación y políticas que denieguen sync desde el vencimiento aunque Cron se demore. Calcular los 30 días calendario con tiempo de servidor; una solicitud vencida no puede cancelarse para reabrir sync.
-- [X] T045 [P] [US6] Implementar serialización de exportaciones propias en `src/features/data-export/exportService.ts`; incluir movimientos, devoluciones, transferencias, cuentas, categorías, metas y aportes; emitir CSV utilizable en planillas y JSON relacional con importes decimales como texto, sin filas de otra cuenta.
-- [X] T046 [US6] Implementar descarga/selección de CSV o JSON en `src/features/data-export/ExportDialog.tsx`; presentar errores de exportación sin incluir datos financieros en logs.
-- [X] T047 [US6] Implementar solicitud/cancelación y estado de eliminación en `src/features/account-settings/deletionService.ts` y `src/features/account-settings/DeletionSettings.tsx`; mostrar fecha límite del servidor, habilitar cancelación solo dentro de 30 días y advertir que un dispositivo que no reconecte puede conservar datos locales.
-- [X] T048 [US6] Implementar worker server-side y programación idempotente en `supabase/functions/process-expired-account-deletions/index.ts` y `supabase/migrations/0008_schedule_account_deletion.sql`; procesar solicitudes vencidas, borrar datos Auth asociados y usar secretos exclusivamente en el entorno confiable/Vault, nunca en el bundle.
-- [X] T049 [P] [US6] Actualizar `src/features/sync/syncEngine.ts` y `src/features/sync/outbox.ts` para purgar la cola de esa cuenta al reconectar tras el vencimiento y tratar el rechazo server-side como terminal; no enviar pendientes bajo otra identidad ni depender de que el worker ya haya corrido.
+- [x] T044 [US6] Crear `supabase/migrations/0007_account_deletion.sql` con estado de ciclo de vida (`deletion_requested_at`, `deletion_due_at`, `deletion_canceled_at`, `deletion_started_at`), RPC de solicitud/cancelación y políticas que denieguen sync desde el vencimiento aunque Cron se demore. Calcular los 30 días calendario con tiempo de servidor; una solicitud vencida no puede cancelarse para reabrir sync.
+- [x] T045 [P] [US6] Implementar serialización de exportaciones propias en `src/features/data-export/exportService.ts`; incluir movimientos, devoluciones, transferencias, cuentas, categorías, metas y aportes; emitir CSV utilizable en planillas y JSON relacional con importes decimales como texto, sin filas de otra cuenta.
+- [x] T046 [US6] Implementar descarga/selección de CSV o JSON en `src/features/data-export/ExportDialog.tsx`; presentar errores de exportación sin incluir datos financieros en logs.
+- [x] T047 [US6] Implementar solicitud/cancelación y estado de eliminación en `src/features/account-settings/deletionService.ts` y `src/features/account-settings/DeletionSettings.tsx`; mostrar fecha límite del servidor, habilitar cancelación solo dentro de 30 días y advertir que un dispositivo que no reconecte puede conservar datos locales.
+- [x] T048 [US6] Implementar worker server-side y programación idempotente en `supabase/functions/process-expired-account-deletions/index.ts` y `supabase/migrations/0008_schedule_account_deletion.sql`; procesar solicitudes vencidas, borrar datos Auth asociados y usar secretos exclusivamente en el entorno confiable/Vault, nunca en el bundle.
+- [x] T049 [P] [US6] Actualizar `src/features/sync/syncEngine.ts` y `src/features/sync/outbox.ts` para purgar la cola de esa cuenta al reconectar tras el vencimiento y tratar el rechazo server-side como terminal; no enviar pendientes bajo otra identidad ni depender de que el worker ya haya corrido.
 
 **Checkpoint**: completar `tests/e2e/account-deletion.spec.ts` con el worker ejecutado dos veces; no anunciar éxito de borrado si el proceso falló parcialmente.
 
@@ -186,14 +185,14 @@ Cada tarea usa `- [ ] Tnnn [P?] [USn?] descripción con rutas`. `[P]` indica tra
 
 ### Tests for User Story 7
 
-- [ ] T050 [P] [US7] Escribir pruebas unitarias que fallen para preferencias `light`, `dark` y `system` y su persistencia en `tests/unit/preferences/appearance.test.ts`.
-- [ ] T051 [P] [US7] Escribir pruebas Playwright que fallen para instalación/shell PWA, teclado, foco, contraste y etiquetas accesibles en `tests/e2e/accessibility-pwa.spec.ts`; usar axe para hallazgos automatizables y conservar validación manual para VoiceOver/Safari.
+- [x] T050 [P] [US7] Escribir pruebas unitarias que fallen para preferencias `light`, `dark` y `system` y su persistencia en `tests/unit/preferences/appearance.test.ts`.
+- [x] T051 [P] [US7] Escribir pruebas Playwright que fallen para instalación/shell PWA, teclado, foco, contraste y etiquetas accesibles en `tests/e2e/accessibility-pwa.spec.ts`; usar axe para hallazgos automatizables y conservar validación manual para VoiceOver/Safari.
 
 ### Implementation for User Story 7
 
-- [ ] T052 [P] [US7] Implementar manifest, iconos y service worker estático en `public/manifest.webmanifest`, `public/icons/icon-192.png`, `public/icons/icon-512.png`, `src/service-worker.ts` y `vite.config.ts`; cachear shell/assets de interfaz, nunca respuestas financieras ni datos privados.
-- [ ] T053 [P] [US7] Implementar preferencia persistida clara/oscura/sistema en `src/app/appearance.ts`, `src/app/components/AppearanceSettings.tsx` y `src/app/styles/theme.css`; seguir preferencia del sistema y permitir que la persona la sustituya.
-- [ ] T054 [P] [US7] Implementar layout responsive y semántica accesible en `src/app/layout/AppShell.tsx` y `src/app/styles/responsive.css`; cubrir pantallas angostas/amplias, navegación por teclado, foco visible, contraste WCAG 2.2 AA y estados que no dependan únicamente del color.
+- [x] T052 [P] [US7] Implementar manifest e iconos PWA en `public/manifest.webmanifest` y `public/icons/`; registrar el worker de `src/service-worker.ts` desde `src/service-worker-registration.ts` y emitirlo con `vite.config.ts`. Cachear shell/assets de interfaz, nunca respuestas financieras ni datos privados.
+- [x] T053 [P] [US7] Implementar preferencia persistida clara/oscura/sistema en `src/app/appearance.ts`, `src/app/components/AppearanceSettings.tsx` y tokens de `src/app/app.css`; seguir la preferencia del sistema y permitir que la persona la sustituya.
+- [x] T054 [P] [US7] Implementar layout responsive y semántica accesible en `src/app/routes.tsx` y `src/app/app.css`; cubrir pantallas angostas/amplias, navegación por teclado, foco visible, contraste WCAG 2.2 AA y estados que no dependan únicamente del color.
 - [ ] T055 [US7] Ejecutar validación manual en Safari real de iPhone y navegador de escritorio para instalar, reabrir, capturar, consultar, cambiar apariencia, usar teclado y probar VoiceOver; registrar pasos, resultados y limitaciones en `docs/validation/safari-accessibility.md`.
 
 **Checkpoint**: completar las pruebas automatizables y manuales del Independent Test; no sustituir la prueba en Safari/VoiceOver real con una emulación de escritorio.

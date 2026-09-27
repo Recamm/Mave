@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { AppearanceSettings } from '../../app/components/AppearanceSettings';
 import { FeedbackMessage } from '../../app/components/FeedbackMessage';
 import { AuthServiceError, authService } from './authService';
 
@@ -125,6 +126,8 @@ export function AuthPage() {
             {isSubmitting ? 'Procesando…' : title}
           </button>
         </form>
+
+        <AppearanceSettings />
 
         {feedback ? (
           <FeedbackMessage tone={feedback.tone}>{feedback.message}</FeedbackMessage>

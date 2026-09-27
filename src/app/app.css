@@ -1,7 +1,8 @@
 :root {
   font-family: 'Aptos', 'Trebuchet MS', sans-serif;
-  color: #192a22;
-  background: #edf3ee;
+  color: var(--color-ink);
+  background: var(--color-canvas);
+  color-scheme: light;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -10,12 +11,51 @@
   --color-paper: #fffefa;
   --color-canvas: #edf3ee;
   --color-line: #d5dfd8;
+  --color-control-line: #bbc9bf;
+  --color-line-soft: #e1e8e2;
+  --color-line-subtle: #e6ece7;
   --color-green: #176348;
   --color-green-dark: #104d38;
+  --color-green-hover: #0b3e2d;
+  --color-green-wash: #f1f7f2;
   --color-coral: #a64235;
+  --color-label: #33463b;
+  --color-focus: #d17b4b;
+  --color-action-background: #104d38;
+  --color-action-foreground: #fff;
+  --color-danger-foreground: #88392f;
+  --color-danger-background: #f8e7e2;
+  --color-success-foreground: #145538;
+  --color-success-background: #e1f1e5;
+  --color-refund-line: #c6d8cb;
   --font-display: 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
 }
 
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --color-ink: #edf4ee;
+  --color-muted: #b5c2b8;
+  --color-paper: #1e2c23;
+  --color-canvas: #121a15;
+  --color-line: #45584b;
+  --color-control-line: #596b60;
+  --color-line-soft: #33453a;
+  --color-line-subtle: #2b3b31;
+  --color-green: #8ccd9f;
+  --color-green-dark: #a6e2bb;
+  --color-green-hover: #b9f0ce;
+  --color-green-wash: #25382b;
+  --color-coral: #f09586;
+  --color-label: #c0cec4;
+  --color-focus: #ffc08c;
+  --color-action-background: #a6e2bb;
+  --color-action-foreground: #122116;
+  --color-danger-foreground: #f0a49a;
+  --color-danger-background: #482922;
+  --color-success-foreground: #a2dfb4;
+  --color-success-background: #203e2b;
+  --color-refund-line: #596e5e;
+}
 * {
   box-sizing: border-box;
 }
@@ -29,7 +69,7 @@ body {
     0deg,
     transparent,
     transparent 31px,
-    rgb(25 42 34 / 3%) 32px
+    color-mix(in srgb, var(--color-ink) 3%, transparent) 32px
   );
 }
 
@@ -49,14 +89,13 @@ button {
   background: var(--color-paper);
   cursor: pointer;
   transition:
-    background-color 140ms ease,
     border-color 140ms ease,
     transform 140ms ease;
 }
 
 button:hover:not(:disabled) {
   border-color: var(--color-green);
-  background: #f1f7f2;
+  background: var(--color-green-wash);
 }
 
 button:active:not(:disabled) {
@@ -72,7 +111,7 @@ button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 3px solid #d17b4b;
+  outline: 3px solid var(--color-focus);
   outline-offset: 2px;
 }
 
@@ -83,7 +122,7 @@ textarea {
   min-width: 0;
   min-height: 2.75rem;
   padding: 0.55rem 0.65rem;
-  border: 1px solid #bbc9bf;
+  border: 1px solid var(--color-control-line);
   border-radius: 3px;
   color: var(--color-ink);
   background: var(--color-paper);
@@ -131,7 +170,7 @@ h2 {
   gap: 1rem;
   padding: 0.35rem max(1.25rem, calc((100vw - 70rem) / 2));
   border-bottom: 1px solid var(--color-line);
-  background: rgb(255 254 250 / 88%);
+  background: color-mix(in srgb, var(--color-paper) 88%, transparent);
 }
 
 .session-strip p {
@@ -165,7 +204,7 @@ h2 {
 
 .session-navigation a:hover {
   color: var(--color-green-dark);
-  background: #f1f7f2;
+  background: var(--color-green-wash);
 }
 
 .session-navigation a[aria-current='page'] {
@@ -174,7 +213,7 @@ h2 {
 }
 
 a:focus-visible {
-  outline: 3px solid #d17b4b;
+  outline: 3px solid var(--color-focus);
   outline-offset: 2px;
 }
 
@@ -283,7 +322,7 @@ a:focus-visible {
 
 .movement-form label {
   align-self: end;
-  color: #33463b;
+  color: var(--color-label);
   font-size: 0.83rem;
   font-weight: 650;
 }
@@ -308,16 +347,16 @@ a:focus-visible {
 }
 
 .button-primary {
-  border-color: var(--color-green-dark);
-  color: #fff;
-  background: var(--color-green-dark);
+  border-color: var(--color-action-background);
+  color: var(--color-action-foreground);
+  background: var(--color-action-background);
   font-weight: 700;
 }
 
 .button-primary:hover:not(:disabled) {
-  border-color: #0b3e2d;
-  color: #fff;
-  background: #0b3e2d;
+  border-color: var(--color-green-hover);
+  color: var(--color-action-foreground);
+  background: var(--color-green-hover);
 }
 
 .movement-history {
@@ -390,13 +429,13 @@ a:focus-visible {
 }
 
 .movement-row__kind--expense {
-  color: #88392f;
-  background: #f8e7e2;
+  color: var(--color-danger-foreground);
+  background: var(--color-danger-background);
 }
 
 .movement-row__kind--income {
-  color: #145538;
-  background: #e1f1e5;
+  color: var(--color-success-foreground);
+  background: var(--color-success-background);
 }
 
 .movement-row__amount {
@@ -416,7 +455,7 @@ a:focus-visible {
   grid-column: 1 / -1;
   gap: 0.55rem;
   padding: 0.75rem 0 0.1rem 0.9rem;
-  border-left: 2px solid #c6d8cb;
+  border-left: 2px solid var(--color-refund-line);
 }
 
 .movement-refund {
@@ -467,7 +506,7 @@ a:focus-visible {
   gap: 0.5rem 0.75rem;
   padding: 0.85rem;
   border-top: 1px solid var(--color-line);
-  background: rgb(255 254 250 / 82%);
+  background: color-mix(in srgb, var(--color-paper) 82%, transparent);
 }
 
 .refund-form h3,
@@ -483,7 +522,7 @@ a:focus-visible {
 }
 
 .refund-form label {
-  color: #33463b;
+  color: var(--color-label);
   font-size: 0.8rem;
   font-weight: 650;
 }
@@ -608,7 +647,7 @@ a:focus-visible {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 0.2rem 0.75rem;
   padding: 0.5rem 0;
-  border-top: 1px solid #e1e8e2;
+  border-top: 1px solid var(--color-line-soft);
   font-size: 0.8rem;
 }
 
@@ -671,7 +710,7 @@ a:focus-visible {
   align-items: center;
   gap: 0.45rem;
   padding-bottom: 0.65rem;
-  border-bottom: 1px solid #e6ece7;
+  border-bottom: 1px solid var(--color-line-subtle);
 }
 
 .category-manager__item > span:first-child {
@@ -706,6 +745,21 @@ a:focus-visible {
   clip-path: inset(50%);
 }
 
+.skip-link {
+  position: absolute;
+  z-index: 10;
+  top: 0.5rem;
+  left: 0.5rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--color-line);
+  background: var(--color-paper);
+  transform: translateY(-160%);
+}
+
+.skip-link:focus-visible {
+  transform: translateY(0);
+}
+
 .auth-page {
   display: grid;
   min-height: 100vh;
@@ -719,7 +773,7 @@ a:focus-visible {
   border: 1px solid var(--color-line);
   border-top: 4px solid var(--color-green);
   background: var(--color-paper);
-  box-shadow: 0 18px 50px rgb(25 42 34 / 8%);
+  box-shadow: 0 18px 50px color-mix(in srgb, var(--color-ink) 8%, transparent);
   animation: enter-ledger 360ms ease-out both;
 }
 
@@ -774,15 +828,56 @@ a:focus-visible {
 
 .auth-panel form > button {
   margin-top: 0.7rem;
-  border-color: var(--color-green-dark);
-  color: #fff;
-  background: var(--color-green-dark);
+  border-color: var(--color-action-background);
+  color: var(--color-action-foreground);
+  background: var(--color-action-background);
   font-weight: 700;
 }
 
 .auth-panel form > button:hover:not(:disabled) {
-  border-color: #0b3e2d;
-  background: #0b3e2d;
+  border-color: var(--color-green-hover);
+  background: var(--color-green-hover);
+}
+
+.appearance-settings {
+  display: grid;
+  gap: 0.55rem;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.appearance-settings legend {
+  margin-bottom: 0.55rem;
+  color: var(--color-muted);
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.appearance-settings__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.appearance-settings__options label {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid var(--color-line);
+  border-radius: 3px;
+  background: var(--color-paper);
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.appearance-settings__options input {
+  width: 1rem;
+  min-height: 1rem;
+  margin: 0;
+  accent-color: var(--color-green-dark);
 }
 
 .session-strip button {
@@ -919,7 +1014,7 @@ a:focus-visible {
 .account-editor label,
 .transfer-editor label {
   margin-top: 0.25rem;
-  color: #33463b;
+  color: var(--color-label);
   font-size: 0.83rem;
   font-weight: 650;
 }
@@ -937,12 +1032,12 @@ a:focus-visible {
 
 .account-editor__feedback--error,
 .transfer-editor__feedback--error {
-  color: #88392f;
+  color: var(--color-danger-foreground);
 }
 
 .account-editor__feedback--success,
 .transfer-editor__feedback--success {
-  color: #145538;
+  color: var(--color-success-foreground);
 }
 
 .transfer-editor__currency {
@@ -1000,7 +1095,7 @@ a:focus-visible {
 .goal-editor label,
 .goal-contribution-form label {
   margin-top: 0.25rem;
-  color: #33463b;
+  color: var(--color-label);
   font-size: 0.83rem;
   font-weight: 650;
 }
@@ -1017,12 +1112,12 @@ a:focus-visible {
 
 .goal-editor__feedback--error,
 .goal-contribution-form__feedback--error {
-  color: #88392f;
+  color: var(--color-danger-foreground);
 }
 
 .goal-editor__feedback--success,
 .goal-contribution-form__feedback--success {
-  color: #145538;
+  color: var(--color-success-foreground);
 }
 
 .account-settings-section {
@@ -1261,10 +1356,14 @@ a:focus-visible {
   .session-navigation {
     order: 1;
     flex: 1 0 100%;
+    flex-wrap: wrap;
     border-top: 1px solid var(--color-line);
   }
 
   .session-navigation a {
+    flex: 1 1 9rem;
+    justify-content: center;
+    min-width: 0;
     min-height: 2.75rem;
   }
 
@@ -1311,6 +1410,7 @@ a:focus-visible {
   }
 
   .session-navigation a {
+    flex-basis: calc(50% - 0.25rem);
     padding-inline: 0.45rem;
     font-size: 0.78rem;
   }

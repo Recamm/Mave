@@ -252,6 +252,7 @@ test('warns, cancels during grace, then purges pending sync at expiry', async ({
     .getByRole('dialog', { name: 'Confirmar eliminación de cuenta' })
     .getByRole('button', { name: 'Confirmar solicitud' })
     .click();
+  await expect(page.getByText('Eliminación solicitada')).toBeVisible();
   const dueAt = backend.lifecycle.deletion_due_at;
   if (!dueAt) {
     throw new Error('The renewed deletion request did not return a deadline.');

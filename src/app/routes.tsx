@@ -62,6 +62,9 @@ function AuthenticatedHome({ email, ownerId }: { email: string; ownerId: string 
 
   return (
     <div className="authenticated-home">
+      <a className="skip-link" href="#main-content">
+        Ir al contenido
+      </a>
       <header className="session-strip">
         {email ? <p>Sesión de {email}</p> : <p>Sesión activa</p>}
         <button onClick={() => void handleSignOut()} type="button">
@@ -81,7 +84,9 @@ function AuthenticatedHome({ email, ownerId }: { email: string; ownerId: string 
         <NavLink to="/goals">Metas</NavLink>
         <NavLink to="/settings">Datos y privacidad</NavLink>
       </nav>
-      <Outlet />
+      <div id="main-content" tabIndex={-1}>
+        <Outlet />
+      </div>
     </div>
   );
 }
