@@ -52,3 +52,11 @@ Usar en ChatGPT con la imagen final adjunta. Ejecutar una vez por variante de co
 - Comprobar el safe area del icono y que no lleve bordes redondeados dibujados.
 - Revisar el SVG con un visualizador y quitar metadata o código innecesario antes de integrarlo.
 - Mantener el símbolo como una M sola; si se incorpora el wordmark Mave, componerlo por separado con tipografía real y no depender de texto generado dentro de una imagen.
+
+## 6. Banner para el repositorio
+
+Adjuntá el [logo de Mave en PNG](assets/brand/logo.png) a ChatGPT Images y usalo como referencia visual. El nombre del producto es **Mave**, sin "n".
+
+> Crea un banner horizontal de 1500 x 500 px para la cabecera del README de GitHub de Mave, una app web de finanzas personales. Usa el logo adjunto como referencia: conserva su símbolo y proporciones, y mantén la paleta violeta `#3B1A68`, `#422379` y `#AB87F8`. Diseña una composición limpia y cálida, con el símbolo a la izquierda y la palabra exacta **Mave** a su lado, en una tipografía de formas suaves que armonice con el logo. Usa un fondo tinta oscuro `#111013`, buen contraste y márgenes amplios para que el banner se lea al reducirse.
+>
+> Escribe "Mave" exactamente así, con M mayúscula y sin letras adicionales. No escribas "Maven". No agregues slogan, texto, iconos financieros, gráficos, mockups ni elementos decorativos. No alteres el símbolo de referencia ni uses degradados, brillos, sombras o efectos 3D. Entrega solo el banner final, sin marco ni presentación.
