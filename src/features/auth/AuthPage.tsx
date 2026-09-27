@@ -1,17 +1,19 @@
 import { useState, type FormEvent } from 'react';
 import { FeedbackMessage } from '../../app/components/FeedbackMessage';
 import { AuthServiceError, authService } from './authService';
+import { WebLoginQrPanel } from './WebLoginQrPanel';
 import brandLogo from '../../../info/finanzas-pwa/assets/brand/logo.svg';
 
-type AuthMode = 'sign-in' | 'sign-up' | 'recovery';
+type AuthMode = 'sign-in' | 'sign-up' | 'recovery' | 'qr';
 
 const modeTitles: Record<AuthMode, string> = {
   'sign-in': 'Iniciar sesión',
   'sign-up': 'Crear cuenta',
   recovery: 'Recuperar contraseña',
+  qr: 'Iniciar sesión con QR',
 };
 
-export function AuthPage() {
+export function AuthPage({ showQrLogin = true }: { showQrLogin?: boolean } = {}) {
   const [mode, setMode] = useState<AuthMode>('sign-in');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -28,6 +30,10 @@ export function AuthPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (mode === 'qr') {
+      return;
+    }
+
     setIsSubmitting(true);
     setFeedback(null);
 
@@ -74,7 +80,10 @@ export function AuthPage() {
         </div>
         <p className="auth-intro">Tus movimientos, en un espacio privado.</p>
 
-        <div aria-label="Acceso a Mave" className="auth-modes">
+        <div
+          aria-label="Acceso a Mave"
+          className={showQrLogin ? 'auth-modes auth-modes--qr' : 'auth-modes'}
+        >
           <button
             aria-pressed={mode === 'sign-in'}
             onClick={() => changeMode('sign-in')}
@@ -96,39 +105,48 @@ export function AuthPage() {
           >
             Recuperar contraseña
           </button>
+          {showQrLogin ? (
+            <button aria-pressed={mode === 'qr'} onClick={() => changeMode('qr')} type="button">
+              Código QR
+            </button>
+          ) : null}
         </div>
 
-        <form aria-label={title} onSubmit={handleSubmit}>
-          <h2>{title}</h2>
-          <label htmlFor="auth-email">Correo electrónico</label>
-          <input
-            autoComplete="email"
-            id="auth-email"
-            onChange={(event) => setEmail(event.target.value)}
-            required
-            type="email"
-            value={email}
-          />
+        {mode === 'qr' ? (
+          <WebLoginQrPanel />
+        ) : (
+          <form aria-label={title} onSubmit={handleSubmit}>
+            <h2>{title}</h2>
+            <label htmlFor="auth-email">Correo electrónico</label>
+            <input
+              autoComplete="email"
+              id="auth-email"
+              onChange={(event) => setEmail(event.target.value)}
+              required
+              type="email"
+              value={email}
+            />
 
-          {mode !== 'recovery' ? (
-            <>
-              <label htmlFor="auth-password">Contraseña</label>
-              <input
-                autoComplete={mode === 'sign-up' ? 'new-password' : 'current-password'}
-                id="auth-password"
-                minLength={6}
-                onChange={(event) => setPassword(event.target.value)}
-                required
-                type="password"
-                value={password}
-              />
-            </>
-          ) : null}
+            {mode !== 'recovery' ? (
+              <>
+                <label htmlFor="auth-password">Contraseña</label>
+                <input
+                  autoComplete={mode === 'sign-up' ? 'new-password' : 'current-password'}
+                  id="auth-password"
+                  minLength={6}
+                  onChange={(event) => setPassword(event.target.value)}
+                  required
+                  type="password"
+                  value={password}
+                />
+              </>
+            ) : null}
 
-          <button disabled={isSubmitting} type="submit">
-            {isSubmitting ? 'Procesando…' : title}
-          </button>
-        </form>
+            <button disabled={isSubmitting} type="submit">
+              {isSubmitting ? 'Procesando…' : title}
+            </button>
+          </form>
+        )}
 
         {feedback ? (
           <FeedbackMessage tone={feedback.tone}>{feedback.message}</FeedbackMessage>

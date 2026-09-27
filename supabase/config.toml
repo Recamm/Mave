@@ -25,3 +25,6 @@ enable_signup = true
 
 [functions.process-expired-account-deletions]
 verify_jwt = false
+
+[functions.web-login]
+verify_jwt = false

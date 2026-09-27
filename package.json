@@ -24,6 +24,7 @@
     "big.js": "^7.0.1",
     "idb": "^8.0.3",
     "lucide-react": "^1.48.0",
+    "qrcode.react": "^4.2.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-router-dom": "^7.18.4"
@@ -49,6 +50,7 @@
     "jsdom": "^26.1.0",
     "prettier": "^3.6.2",
     "sharp": "^0.35.5",
+    "supabase": "^2.118.0",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.70.1",
     "vite": "^7.1.3",

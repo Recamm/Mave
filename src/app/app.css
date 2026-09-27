@@ -1557,6 +1557,16 @@ a:focus-visible {
   border-bottom: 1px solid var(--color-line);
 }
 
+.auth-modes--qr {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (max-width: 30rem) {
+  .auth-modes--qr {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .auth-modes button {
   min-height: 3rem;
   padding: 0.45rem 0.3rem;
@@ -1600,6 +1610,176 @@ a:focus-visible {
 .auth-panel form > button:hover:not(:disabled) {
   border-color: var(--color-green-hover);
   background: var(--color-green-hover);
+}
+
+.auth-qr {
+  display: grid;
+  justify-items: center;
+  gap: 0.75rem;
+  text-align: center;
+}
+
+.auth-qr h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.auth-qr__code {
+  width: min(100%, 14rem);
+  height: auto;
+  padding: 0.5rem;
+  border: 1px solid var(--color-line);
+  background: #fff;
+}
+
+.auth-qr__copy,
+.auth-qr__expiry {
+  max-width: 24rem;
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.auth-qr__expiry {
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+}
+
+.auth-qr__retry {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.web-login-approval {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.web-login-approval h2 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.web-login-approval > p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.web-login-approval__target {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.85rem 0;
+  border-top: 1px solid var(--color-line);
+  border-bottom: 1px solid var(--color-line);
+}
+
+.web-login-approval__target span {
+  color: var(--color-muted);
+  font-size: 0.8rem;
+}
+
+.web-login-approval__target strong {
+  overflow-wrap: anywhere;
+}
+
+.web-login-approval__notice {
+  color: var(--color-muted);
+  font-size: 0.84rem;
+}
+
+.web-login-approval__confirm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-color: var(--color-action-background);
+  color: var(--color-action-foreground);
+  background: var(--color-action-background);
+  font-weight: 700;
+}
+
+.web-login-approval__cancel {
+  justify-self: center;
+}
+
+.app-pin-lock-page {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 1.5rem;
+}
+
+.app-pin-lock-panel {
+  width: min(100%, 29rem);
+  padding: clamp(1.25rem, 5vw, 2.25rem);
+  border: 1px solid var(--color-line);
+  border-top: 4px solid var(--color-green);
+  background: var(--color-paper);
+  box-shadow: 0 18px 50px color-mix(in srgb, var(--color-ink) 8%, transparent);
+  animation: enter-ledger 360ms ease-out both;
+}
+
+.app-pin-lock-brand {
+  font-size: 1.65rem;
+  font-weight: 700;
+}
+
+.app-pin-lock-panel h1 {
+  margin: 1rem 0 0.45rem;
+  font-size: 1.6rem;
+}
+
+.app-pin-lock-copy,
+.app-pin-recovery p {
+  color: var(--color-muted);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.app-pin-lock-form,
+.app-pin-recovery form {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.app-pin-lock-form label,
+.app-pin-recovery label {
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+
+.app-pin-lock-form button,
+.app-pin-recovery button {
+  margin-top: 0.35rem;
+  border-color: var(--color-action-background);
+  color: var(--color-action-foreground);
+  background: var(--color-action-background);
+  font-weight: 700;
+}
+
+.app-pin-recovery {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-line);
+}
+
+.app-pin-recovery summary {
+  min-height: 2.5rem;
+  color: var(--color-muted);
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 650;
+}
+
+.app-pin-recovery form {
+  padding-top: 0.5rem;
+}
+
+.app-pin-recovery p {
+  margin-bottom: 0.15rem;
 }
 
 .appearance-settings {
@@ -1758,6 +1938,10 @@ a:focus-visible {
   transition: background-color 140ms ease;
 }
 
+.settings-directory__item--security {
+  grid-template-columns: 2.75rem minmax(0, 1fr) auto auto;
+}
+
 .settings-directory__item:hover {
   background: color-mix(in srgb, var(--color-green-wash) 62%, transparent);
 }
@@ -1847,6 +2031,79 @@ a:focus-visible {
 
 .settings-section--danger .settings-section__heading h2 {
   color: var(--color-danger-foreground);
+}
+
+.settings-recommended {
+  color: var(--color-success-foreground);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.app-pin-settings {
+  display: grid;
+  min-width: 0;
+  gap: 1rem;
+}
+
+.app-pin-settings__toggle {
+  display: flex;
+  min-height: 3rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  cursor: pointer;
+}
+
+.app-pin-settings__toggle > span {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.app-pin-settings__toggle strong {
+  font-size: 0.9rem;
+}
+
+.app-pin-settings__toggle > span > span {
+  color: var(--color-muted);
+  font-size: 0.78rem;
+}
+
+.app-pin-settings__toggle input {
+  width: 1.2rem;
+  min-width: 1.2rem;
+  min-height: 1.2rem;
+  height: 1.2rem;
+  accent-color: var(--color-green);
+}
+
+.app-pin-settings form {
+  display: grid;
+  gap: 0.6rem;
+  max-width: 25rem;
+}
+
+.app-pin-settings form label {
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+
+.app-pin-settings__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 0.35rem;
+}
+
+.app-pin-settings__actions button:first-child {
+  border-color: var(--color-action-background);
+  color: var(--color-action-foreground);
+  background: var(--color-action-background);
+  font-weight: 700;
+}
+
+.app-pin-settings__change {
+  justify-self: start;
 }
 
 .settings-sign-out {

@@ -1,19 +1,34 @@
-import { Link, NavLink, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
+import {
+  Link,
+  NavLink,
+  Navigate,
+  Outlet,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { useAuthSession } from './useAuthSession';
 import { FeedbackMessage } from './components/FeedbackMessage';
 import { LoadingIndicator } from './components/LoadingIndicator';
 import { getAppErrorMessage } from '../lib/errors';
 import { AuthPage } from '../features/auth/AuthPage';
+import { AppPinLockScreen } from '../features/auth/AppPinLockScreen';
+import { appPinService } from '../features/auth/appPinService';
+import { WebLoginApprovalPage } from '../features/auth/WebLoginApprovalPage';
 import { MovementList } from '../features/movements/MovementList';
 import { AccountsPage } from '../features/accounts/AccountsPage';
 import { AccountSettingsPage } from '../features/account-settings/AccountSettingsPage';
 import { StatisticsPage } from '../features/summaries/StatisticsPage';
+import { useAppPinAccess } from './AppPinAccessContext';
 import brandLogo from '../../info/finanzas-pwa/assets/brand/logo.svg';
 import { Activity, House, Landmark, Settings } from 'lucide-react';
 
 export function AppRoutes() {
   return (
     <Routes>
+      <Route path="/login/approve" element={<LoginApprovalRoute />} />
       <Route element={<SessionRoute />}>
         <Route path="/" element={<MovementList />} />
         <Route path="/accounts" element={<AccountsPage />} />
@@ -27,8 +42,83 @@ export function AppRoutes() {
   );
 }
 
+function LoginApprovalRoute() {
+  const { errorCode, session, status } = useAuthSession();
+  const { setUnlockedUserId, unlockedUserId } = useAppPinAccess();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [challenge] = useState(() => {
+    const fragmentParams = new URLSearchParams(location.hash.slice(1));
+    return {
+      approvalSecret: fragmentParams.get('approval') ?? '',
+      requestId: fragmentParams.get('request') ?? '',
+    };
+  });
+
+  useEffect(() => {
+    if (location.hash) {
+      navigate(
+        { pathname: location.pathname, search: location.search, hash: '' },
+        { replace: true },
+      );
+    }
+  }, [location.hash, location.pathname, location.search, navigate]);
+
+  if (!challenge.requestId || !challenge.approvalSecret) {
+    return (
+      <main className="auth-page">
+        <section className="auth-panel">
+          <p className="eyebrow">Aprobación de acceso</p>
+          <h1>Solicitud no válida</h1>
+          <p>Vuelve al PC e inicia una solicitud nueva.</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (status === 'loading') {
+    return <SessionLoading isHome={false} />;
+  }
+
+  if (status === 'unauthenticated') {
+    return <AuthPage showQrLogin={false} />;
+  }
+
+  if (status === 'authenticated' && session) {
+    if (appPinService.isEnabled(session.user.id) && unlockedUserId !== session.user.id) {
+      return (
+        <AppPinLockScreen
+          email={session.user.email}
+          onUnlock={() => setUnlockedUserId(session.user.id)}
+          userId={session.user.id}
+        />
+      );
+    }
+
+    return (
+      <WebLoginApprovalPage
+        accountEmail={session.user.email ?? ''}
+        approvalSecret={challenge.approvalSecret}
+        requestId={challenge.requestId}
+      />
+    );
+  }
+
+  return (
+    <main className="auth-page">
+      <section className="auth-panel">
+        <h1>Mave</h1>
+        <FeedbackMessage tone="error">
+          {getAppErrorMessage(errorCode ?? 'session-unavailable')}
+        </FeedbackMessage>
+      </section>
+    </main>
+  );
+}
+
 function SessionRoute() {
   const { errorCode, session, status } = useAuthSession();
+  const { setUnlockedUserId, unlockedUserId } = useAppPinAccess();
   const { pathname } = useLocation();
 
   if (status === 'loading') {
@@ -40,6 +130,16 @@ function SessionRoute() {
   }
 
   if (status === 'authenticated' && session) {
+    if (appPinService.isEnabled(session.user.id) && unlockedUserId !== session.user.id) {
+      return (
+        <AppPinLockScreen
+          email={session.user.email}
+          onUnlock={() => setUnlockedUserId(session.user.id)}
+          userId={session.user.id}
+        />
+      );
+    }
+
     return <AuthenticatedHome />;
   }
 

@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { ArrowLeft, ChevronRight, Database, Palette, UserRound } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Database, Palette, ShieldCheck, UserRound } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { AppIconSettings } from '../../app/components/AppIconSettings';
 import { AppearanceSettings } from '../../app/components/AppearanceSettings';
@@ -10,6 +10,7 @@ import { useAuthSession } from '../../app/useAuthSession';
 import { ExportDialog } from '../data-export/ExportDialog';
 import { signOutWithPendingWarning } from '../auth/logoutService';
 import { AccountAccessSettings } from './AccountAccessSettings';
+import { AppPinSettings } from './AppPinSettings';
 import { DeletionSettings } from './DeletionSettings';
 
 export function AccountSettingsPage() {
@@ -22,6 +23,10 @@ export function AccountSettingsPage() {
 
   if (section === 'appearance') {
     return <AccountSettingsAppearancePage />;
+  }
+
+  if (section === 'security') {
+    return <AccountSettingsSecurityPage />;
   }
 
   if (section === 'data') {
@@ -49,6 +54,20 @@ export function AccountSettingsPage() {
             <strong>Apariencia</strong>
             <span>Tema, icono y navegación</span>
           </span>
+          <ChevronRight aria-hidden="true" className="settings-directory__arrow" size={19} />
+        </Link>
+        <Link
+          className="settings-directory__item settings-directory__item--security"
+          to="/profile?section=security"
+        >
+          <span aria-hidden="true" className="settings-directory__icon">
+            <ShieldCheck size={20} />
+          </span>
+          <span className="settings-directory__copy">
+            <strong>Seguridad</strong>
+            <span>Bloqueo de acceso en este navegador</span>
+          </span>
+          <span className="settings-recommended">Recomendado</span>
           <ChevronRight aria-hidden="true" className="settings-directory__arrow" size={19} />
         </Link>
         <Link className="settings-directory__item" to="/profile?section=data">
@@ -140,6 +159,28 @@ export function AccountSettingsAppearancePage() {
           <AppIconSettings />
           <MobileNavigationSettings />
           <MovementTypeDisplaySettings />
+        </div>
+      </section>
+    </SettingsSectionPage>
+  );
+}
+
+export function AccountSettingsSecurityPage() {
+  const { session } = useAuthSession();
+
+  if (!session) {
+    return null;
+  }
+
+  return (
+    <SettingsSectionPage title="Seguridad">
+      <section aria-labelledby="settings-security-title" className="settings-section">
+        <div className="settings-section__heading">
+          <h2 id="settings-security-title">PIN de acceso</h2>
+          <span className="settings-recommended">Recomendado</span>
+        </div>
+        <div className="settings-section__content">
+          <AppPinSettings />
         </div>
       </section>
     </SettingsSectionPage>
