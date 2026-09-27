@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { FullPageFormDialog } from '../../app/components/FullPageFormDialog';
 import { goalService, GoalInputError, type SavingsGoal } from './goalService';
 
 type GoalContributionFormProps = {
@@ -13,7 +14,7 @@ export function GoalContributionForm({ goal, onAdded }: GoalContributionFormProp
   const [success, setSuccess] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>, closeDialog: () => void) {
     event.preventDefault();
     setError('');
     setSuccess('');
@@ -28,6 +29,7 @@ export function GoalContributionForm({ goal, onAdded }: GoalContributionFormProp
       setAmount('');
       setSuccess('Aporte registrado.');
       onAdded();
+      closeDialog();
     } catch (caughtError) {
       setError(
         caughtError instanceof GoalInputError
@@ -40,58 +42,67 @@ export function GoalContributionForm({ goal, onAdded }: GoalContributionFormProp
   }
 
   return (
-    <form
-      aria-label="Registrar aporte"
-      className="goal-contribution-form"
-      onSubmit={(event) => void handleSubmit(event)}
+    <FullPageFormDialog
+      dialogLabel={`Registrar aporte para ${goal.name}`}
+      triggerClassName="button-primary"
+      triggerLabel="Registrar aporte"
     >
-      <label htmlFor={`goal-contribution-amount-${goal.id}`}>Importe del aporte</label>
-      <input
-        autoComplete="off"
-        id={`goal-contribution-amount-${goal.id}`}
-        inputMode="decimal"
-        onChange={(event) => {
-          setAmount(event.target.value);
-          setError('');
-          setSuccess('');
-        }}
-        required
-        value={amount}
-      />
-
-      <label htmlFor={`goal-contribution-date-${goal.id}`}>Fecha del aporte</label>
-      <input
-        id={`goal-contribution-date-${goal.id}`}
-        onChange={(event) => {
-          setContributedOn(event.target.value);
-          setError('');
-          setSuccess('');
-        }}
-        required
-        type="date"
-        value={contributedOn}
-      />
-
-      {error ? (
-        <p
-          className="goal-contribution-form__feedback goal-contribution-form__feedback--error"
-          role="alert"
+      {(closeDialog) => (
+        <form
+          aria-label="Registrar aporte"
+          className="goal-contribution-form"
+          onSubmit={(event) => void handleSubmit(event, closeDialog)}
         >
-          {error}
-        </p>
-      ) : null}
-      {success ? (
-        <p
-          className="goal-contribution-form__feedback goal-contribution-form__feedback--success"
-          role="status"
-        >
-          {success}
-        </p>
-      ) : null}
-      <button className="button-primary" disabled={isSubmitting} type="submit">
-        Agregar aporte
-      </button>
-    </form>
+          <h2>Aporte a {goal.name}</h2>
+          <label htmlFor={`goal-contribution-amount-${goal.id}`}>Importe del aporte</label>
+          <input
+            autoComplete="off"
+            id={`goal-contribution-amount-${goal.id}`}
+            inputMode="decimal"
+            onChange={(event) => {
+              setAmount(event.target.value);
+              setError('');
+              setSuccess('');
+            }}
+            required
+            value={amount}
+          />
+
+          <label htmlFor={`goal-contribution-date-${goal.id}`}>Fecha del aporte</label>
+          <input
+            id={`goal-contribution-date-${goal.id}`}
+            onChange={(event) => {
+              setContributedOn(event.target.value);
+              setError('');
+              setSuccess('');
+            }}
+            required
+            type="date"
+            value={contributedOn}
+          />
+
+          {error ? (
+            <p
+              className="goal-contribution-form__feedback goal-contribution-form__feedback--error"
+              role="alert"
+            >
+              {error}
+            </p>
+          ) : null}
+          {success ? (
+            <p
+              className="goal-contribution-form__feedback goal-contribution-form__feedback--success"
+              role="status"
+            >
+              {success}
+            </p>
+          ) : null}
+          <button className="button-primary" disabled={isSubmitting} type="submit">
+            Agregar aporte
+          </button>
+        </form>
+      )}
+    </FullPageFormDialog>
   );
 }
 

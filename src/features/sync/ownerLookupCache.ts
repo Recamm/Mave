@@ -37,7 +37,10 @@ export function readOwnerLookups(ownerId: string): OwnerLookupSnapshot | null {
 
     return {
       categories: snapshot.categories,
-      financialAccounts: snapshot.financialAccounts,
+      financialAccounts: snapshot.financialAccounts.map((account) => ({
+        ...account,
+        archived_at: account.archived_at ?? null,
+      })),
     };
   } catch {
     return null;
@@ -93,6 +96,9 @@ function isFinancialAccount(value: unknown): value is FinancialAccountOption {
   return (
     typeof account.id === 'string' &&
     typeof account.name === 'string' &&
-    (account.currency === 'ARS' || account.currency === 'USD')
+    (account.currency === 'ARS' || account.currency === 'USD') &&
+    (account.archived_at === undefined ||
+      account.archived_at === null ||
+      typeof account.archived_at === 'string')
   );
 }

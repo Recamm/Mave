@@ -10,6 +10,7 @@ const ownerTwo = '10000000-0000-0000-0000-000000000002';
 const movementId = '30000000-0000-0000-0000-000000000001';
 const operationId = '40000000-0000-0000-0000-000000000001';
 const blockedOperationId = '40000000-0000-0000-0000-000000000002';
+const accountId = '50000000-0000-0000-0000-000000000001';
 
 const movementInput: MovementInput = {
   amount: '12.50',
@@ -59,6 +60,21 @@ describe('movement outbox', () => {
     });
     expect(ownerOperations[0]?.payload?.amount).toBe('12.50');
     expect(await reopenedStore.list(ownerTwo)).toEqual([]);
+  });
+
+  it('detects unsynchronized operations that reference an account for the same owner', async () => {
+    const { store } = createStore();
+    await store.enqueue(
+      createMutation(ownerOne, {
+        payload: { ...movementInput, financialAccountId: accountId },
+      }),
+    );
+
+    await expect(store.hasPendingAccountReference(ownerOne, accountId)).resolves.toBe(true);
+    await expect(store.hasPendingAccountReference(ownerOne, 'another-account')).resolves.toBe(
+      false,
+    );
+    await expect(store.hasPendingAccountReference(ownerTwo, accountId)).resolves.toBe(false);
   });
 
   it('records sending, retry, conflict, and blocked states', async () => {

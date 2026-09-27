@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(21);
+select plan(27);
 
 insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at)
 values
@@ -249,6 +249,54 @@ select is(
   (select count(*)::integer from public.goal_contributions),
   0,
   'another owner cannot read a contribution'
+);
+select lives_ok(
+  $$ delete from public.goals where id = '25000000-0000-0000-0000-000000000001' $$,
+  'another owner cannot delete someone else''s goal'
+);
+
+reset role;
+select set_config('request.jwt.claim.sub', '15000000-0000-0000-0000-000000000001', true);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"15000000-0000-0000-0000-000000000001","role":"authenticated"}',
+  true
+);
+set local role authenticated;
+
+select is(
+  (select count(*)::integer from public.goals where id = '25000000-0000-0000-0000-000000000001'),
+  1,
+  'a foreign delete leaves the owner’s goal intact'
+);
+select lives_ok(
+  $$ delete from public.goals where id = '25000000-0000-0000-0000-000000000001' $$,
+  'owner can delete their own goal'
+);
+select is(
+  (select count(*)::integer from public.goals where user_id = auth.uid()),
+  1,
+  'deleting one goal leaves the owner’s other goal intact'
+);
+select is(
+  (select count(*)::integer from public.goal_contributions),
+  0,
+  'deleting a goal cascades to its contributions'
+);
+
+reset role;
+select set_config('request.jwt.claim.sub', '15000000-0000-0000-0000-000000000002', true);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"15000000-0000-0000-0000-000000000002","role":"authenticated"}',
+  true
+);
+set local role authenticated;
+
+select is(
+  (select count(*)::integer from public.goals where id = '25000000-0000-0000-0000-000000000003'),
+  1,
+  'deleting another owner’s goal does not affect this owner’s goal'
 );
 
 select * from finish();

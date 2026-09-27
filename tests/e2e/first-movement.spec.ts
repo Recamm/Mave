@@ -6,6 +6,17 @@ const foodCategoryId = '10000000-0000-0000-0000-000000000001';
 const customCategoryId = '10000000-0000-0000-0000-000000000011';
 const timestamp = '2026-09-26T12:00:00.000Z';
 
+function getIsoWeekValue(date: Date): string {
+  const thursday = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  thursday.setUTCDate(thursday.getUTCDate() + 3 - ((thursday.getUTCDay() + 6) % 7));
+  const weekYear = thursday.getUTCFullYear();
+  const firstThursday = new Date(Date.UTC(weekYear, 0, 4));
+  firstThursday.setUTCDate(firstThursday.getUTCDate() + 3 - ((firstThursday.getUTCDay() + 6) % 7));
+  const week = Math.round((thursday.getTime() - firstThursday.getTime()) / 604_800_000) + 1;
+
+  return `${weekYear}-W${String(week).padStart(2, '0')}`;
+}
+
 type CategoryFixture = {
   id: string;
   name: string;
@@ -237,7 +248,66 @@ test('registers a first movement, edits and deletes it, and manages categories',
     .click();
 
   await expect(page.getByRole('heading', { name: 'Inicio' })).toBeVisible();
+  await expect(page.locator('.session-strip')).toHaveCSS('position', 'sticky');
   const initialViewport = page.viewportSize();
+  if (initialViewport && initialViewport.width > 760) {
+    await expect(page.getByRole('group', { name: 'Período de categorías' })).toBeVisible();
+    const desktopBalance = await page
+      .getByRole('region', { name: 'Balance de la cuenta seleccionada' })
+      .boundingBox();
+    const desktopActions = await page.locator('.dashboard-actions__list').boundingBox();
+    const desktopHistoryToolbar = await page.locator('.movement-history__controls').boundingBox();
+    const desktopHistoryViews = await page.locator('.movement-history__views').boundingBox();
+    const desktopCategoryPeriod = await page
+      .locator('.movement-history__category-period')
+      .boundingBox();
+    const desktopPeriodViews = await page.locator('.movement-history__period-views').boundingBox();
+    const desktopWeekBounds = await page
+      .getByRole('group', { name: 'Período de categorías' })
+      .getByRole('button', { name: 'Semana' })
+      .boundingBox();
+    const desktopMonthBounds = await page
+      .getByRole('group', { name: 'Período de categorías' })
+      .getByRole('button', { name: 'Mes' })
+      .boundingBox();
+    const desktopMonthInputBounds = await page.getByLabel('Mes de categorías').boundingBox();
+    if (
+      !desktopBalance ||
+      !desktopActions ||
+      !desktopHistoryToolbar ||
+      !desktopHistoryViews ||
+      !desktopCategoryPeriod ||
+      !desktopPeriodViews ||
+      !desktopWeekBounds ||
+      !desktopMonthBounds ||
+      !desktopMonthInputBounds
+    ) {
+      throw new Error('The desktop overview sections must have visible bounds.');
+    }
+    expect(desktopActions.x).toBeGreaterThan(desktopBalance.x);
+    expect(
+      Math.abs(
+        desktopActions.y +
+          desktopActions.height / 2 -
+          (desktopBalance.y + desktopBalance.height / 2),
+      ),
+    ).toBeLessThanOrEqual(1);
+    expect(desktopHistoryViews.x).toBeLessThan(desktopCategoryPeriod.x);
+    expect(desktopCategoryPeriod.x + desktopCategoryPeriod.width).toBeCloseTo(
+      desktopHistoryToolbar.x + desktopHistoryToolbar.width,
+      0,
+    );
+    expect(desktopWeekBounds.x).toBeLessThan(desktopMonthBounds.x);
+    expect(Math.abs(desktopWeekBounds.y - desktopMonthBounds.y)).toBeLessThanOrEqual(1);
+    expect(desktopMonthInputBounds.y).toBeGreaterThan(desktopPeriodViews.y);
+    expect(
+      Math.abs(
+        desktopMonthInputBounds.x +
+          desktopMonthInputBounds.width -
+          (desktopCategoryPeriod.x + desktopCategoryPeriod.width),
+      ),
+    ).toBeLessThanOrEqual(1);
+  }
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.getByRole('button', { name: 'Nuevo movimiento' })).toBeVisible();
   const dashboardDocumentWidth = await page
@@ -245,8 +315,17 @@ test('registers a first movement, edits and deletes it, and manages categories',
     .evaluate((element) => element.scrollWidth);
   expect(dashboardDocumentWidth).toBeLessThanOrEqual(390);
   await page.getByRole('button', { name: 'Nuevo movimiento' }).click();
-  await expect(page.getByRole('dialog', { name: 'Registrar un movimiento' })).toBeVisible();
+  const movementDialog = page.getByRole('dialog', { name: 'Registrar un movimiento' });
+  await expect(movementDialog).toBeVisible();
+  await expect(movementDialog).toHaveCSS('overflow-x', 'hidden');
   const dateInput = page.getByLabel('Fecha');
+  const dialogBounds = await movementDialog.boundingBox();
+  const dateBounds = await dateInput.boundingBox();
+  if (!dialogBounds || !dateBounds) {
+    throw new Error('The movement dialog and date input must have visible bounds.');
+  }
+  expect(dateBounds.x).toBeGreaterThanOrEqual(dialogBounds.x);
+  expect(dateBounds.x + dateBounds.width).toBeLessThanOrEqual(dialogBounds.x + dialogBounds.width);
   const today = new Date();
   const proposedDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
   await expect(dateInput).toHaveValue(proposedDate);
@@ -261,12 +340,54 @@ test('registers a first movement, edits and deletes it, and manages categories',
   const mobileDocumentWidth = await page.locator('html').evaluate((element) => element.scrollWidth);
   expect(mobileDocumentWidth).toBeLessThanOrEqual(390);
   const historyViews = page.getByRole('group', { name: 'Vista del historial' });
+  await expect(historyViews.getByRole('button', { name: 'Por categoría' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await expect(page.locator('#history-kind-filter')).toHaveCount(0);
+  const historyViewsBounds = await historyViews.boundingBox();
+  const historySectionBounds = await page.locator('.movement-history').boundingBox();
+  const generalViewBounds = await historyViews
+    .getByRole('button', { name: 'General' })
+    .boundingBox();
+  const categoryViewBounds = await historyViews
+    .getByRole('button', { name: 'Por categoría' })
+    .boundingBox();
+  if (!historyViewsBounds || !historySectionBounds || !generalViewBounds || !categoryViewBounds) {
+    throw new Error('The history switch and its options must have visible bounds.');
+  }
+  expect(Math.abs(historyViewsBounds.width - historySectionBounds.width)).toBeLessThanOrEqual(1);
+  expect(Math.abs(generalViewBounds.width - categoryViewBounds.width)).toBeLessThanOrEqual(1);
   await historyViews.getByRole('button', { name: 'Por categoría' }).click();
   const categoryHistory = page.getByRole('list', { name: 'Movimientos por categoría' });
   const foodGroup = categoryHistory.locator('li.movement-category').filter({
     hasText: 'Alimentación',
   });
   await expect(foodGroup).toContainText('ARS 1.250,50');
+  const currentMonthValue = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+  await expect(page.getByLabel('Mes de categorías')).toHaveValue(currentMonthValue);
+  const categoryPeriod = page.getByRole('group', { name: 'Período de categorías' });
+  await categoryPeriod.getByRole('button', { name: 'Semana' }).click();
+  const categoryWeekInput = page.getByLabel('Semana de categorías');
+  await categoryWeekInput.fill(getIsoWeekValue(correctedDate));
+  await expect(foodGroup).toContainText('ARS 1.250,50');
+  await categoryPeriod.getByRole('button', { name: 'Mes' }).click();
+  await expect(page.getByLabel('Mes de categorías')).toHaveValue(currentMonthValue);
+  await page.getByRole('button', { name: 'Ver todos los movimientos' }).click();
+  const fullHistory = page.getByRole('dialog', { name: 'Todos los movimientos' });
+  await expect(fullHistory).toBeVisible();
+  const fullHistoryKindFilter = fullHistory.getByLabel('Tipo de movimiento');
+  await expect(fullHistoryKindFilter).toHaveValue('all');
+  await fullHistoryKindFilter.selectOption('income');
+  await expect(fullHistory.locator('.movement-history-day')).toHaveCount(0);
+  await fullHistoryKindFilter.selectOption('all');
+  await expect(fullHistory.locator('.movement-history-day')).toHaveCount(1);
+  await expect(fullHistory.locator('.movement-history-day h3 time')).toHaveAttribute(
+    'datetime',
+    correctedDateValue,
+  );
+  await expect(fullHistory.locator('.movement-history-day')).toContainText('ARS 1.250,50');
+  await fullHistory.getByRole('button', { name: 'Cerrar historial' }).click();
   expect(await page.locator('html').evaluate((element) => element.scrollWidth)).toBeLessThanOrEqual(
     390,
   );
@@ -286,6 +407,11 @@ test('registers a first movement, edits and deletes it, and manages categories',
 
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Inicio' })).toBeVisible();
+  await expect(page.locator('.session-strip')).toHaveCSS('position', 'sticky');
+  await page
+    .getByRole('group', { name: 'Vista del historial' })
+    .getByRole('button', { name: 'General' })
+    .click();
   const movementAfterReload = movementHistory
     .getByRole('listitem')
     .filter({ hasText: 'Alimentación' });
@@ -297,7 +423,10 @@ test('registers a first movement, edits and deletes it, and manages categories',
   await page.getByRole('button', { name: 'Guardar cambios' }).click();
   await expect(movementAfterReload).toContainText('ARS 1.500,75');
 
-  await page.getByRole('link', { name: 'Perfil', exact: true }).click();
+  await page.getByRole('link', { name: 'Configuración', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Configuración' })).toBeVisible();
+  await page.getByRole('link', { name: /Apariencia/ }).click();
+  await expect(page.getByRole('heading', { name: 'Apariencia' })).toBeVisible();
   const appIconSettings = page.getByRole('group', { name: 'Icono de inicio' });
   await expect
     .poll(() =>
@@ -320,7 +449,7 @@ test('registers a first movement, edits and deletes it, and manages categories',
   );
   await expect(appIconSettings.getByText(/elimina Mave.*vuelve a añadirla/i)).toBeVisible();
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'Mi perfil' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Apariencia' })).toBeVisible();
   await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute(
     'href',
     './icons/apple-touch-icon-dark.png',
@@ -355,7 +484,12 @@ test('registers a first movement, edits and deletes it, and manages categories',
     'symbols',
   );
 
-  await page.getByRole('button', { name: 'Gestionar categorías' }).click();
+  await page.getByRole('link', { name: 'Gestión', exact: true }).click();
+  const categoriesPanel = page.locator('details.accounts-categories-panel');
+  await expect(categoriesPanel).not.toHaveAttribute('open', '');
+  await categoriesPanel.locator('summary').click();
+  await expect(categoriesPanel).toHaveAttribute('open', '');
+  await categoriesPanel.getByRole('button', { name: 'Gestionar categorías' }).click();
   const categoryManager = page.getByRole('region', { name: 'Gestionar categorías' });
   await categoryManager.getByLabel('Nueva categoría').fill('Mascotas');
   await categoryManager.getByRole('button', { name: 'Agregar categoría' }).click();
@@ -370,9 +504,17 @@ test('registers a first movement, edits and deletes it, and manages categories',
   await expect(foodCategory).toContainText('Archivada');
   await page.getByRole('button', { name: 'Cerrar categorías' }).click();
   await page.getByRole('link', { name: 'Inicio', exact: true }).click();
+  await page
+    .getByRole('group', { name: 'Vista del historial' })
+    .getByRole('button', { name: 'General' })
+    .click();
   await expect(movementAfterReload).toContainText('Alimentación');
   await expect(movementAfterReload.getByRole('img', { name: 'Egreso' })).toHaveText('-');
   await page.reload();
+  await page
+    .getByRole('group', { name: 'Vista del historial' })
+    .getByRole('button', { name: 'General' })
+    .click();
   const persistedMovement = page
     .getByRole('list', { name: 'Historial de movimientos' })
     .getByRole('listitem')
@@ -387,6 +529,10 @@ test('registers a first movement, edits and deletes it, and manages categories',
   await page.getByLabel('Categoría', { exact: true }).selectOption(customCategoryId);
   await page.getByLabel('Nota (opcional)').fill('Compra con tarjeta');
   await page.getByRole('button', { name: 'Registrar movimiento' }).click();
+  await page
+    .getByRole('group', { name: 'Vista del historial' })
+    .getByRole('button', { name: 'General' })
+    .click();
 
   const cardExpense = movementHistory
     .getByRole('listitem')

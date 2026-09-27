@@ -133,6 +133,11 @@ async function installSupabaseMock(page: Page): Promise<BackendState> {
       return;
     }
 
+    if (url.pathname === '/rest/v1/transfers' && request.method() === 'GET') {
+      await respond([]);
+      return;
+    }
+
     if (url.pathname === '/rest/v1/goals' && request.method() === 'GET') {
       await respond(
         state.goals
@@ -160,6 +165,22 @@ async function installSupabaseMock(page: Page): Promise<BackendState> {
       };
       state.goals.push(goal);
       await respond(goal, 201);
+      return;
+    }
+
+    if (url.pathname === '/rest/v1/goals' && request.method() === 'DELETE') {
+      const goalId = url.searchParams.get('id')?.replace(/^eq\./, '');
+      const deletedGoal = state.goals.find((goal) => goal.id === goalId);
+      if (!deletedGoal) {
+        await respond({ message: 'Goal not found.' }, 404);
+        return;
+      }
+
+      state.goals = state.goals.filter((goal) => goal.id !== goalId);
+      state.contributions = state.contributions.filter(
+        (contribution) => contribution.goal_id !== goalId,
+      );
+      await respond({ id: deletedGoal.id });
       return;
     }
 
@@ -225,17 +246,21 @@ test('tracks goal contributions without creating movements or changing accounts'
   await expect(page.getByRole('heading', { name: 'Inicio' })).toBeVisible();
 
   await page.setViewportSize({ width: 320, height: 720 });
-  await page.getByRole('link', { name: 'Metas' }).click();
+  await page.getByRole('link', { name: 'Gestión', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Gestión financiera' })).toBeVisible();
+  const goalsPanel = page.locator('#savings-goals');
+  await goalsPanel.scrollIntoViewIfNeeded();
   await expect(page.getByRole('heading', { name: 'Metas de ahorro' })).toBeVisible();
+  await expect(goalsPanel).not.toHaveAttribute('open', '');
+  await goalsPanel.locator('summary').click();
+  await expect(goalsPanel).toHaveAttribute('open', '');
   await expect(page.locator('html')).toHaveCSS('scrollbar-width', 'none');
   await expect(page.locator('body')).toHaveCSS('overflow-x', 'clip');
-  const verticalScrollY = await page.evaluate(() => {
-    window.scrollTo(0, document.documentElement.scrollHeight);
-    return window.scrollY;
-  });
-  expect(verticalScrollY).toBeGreaterThan(0);
-  await page.evaluate(() => window.scrollTo(0, 0));
-
+  await page.getByRole('button', { name: 'Agregar meta', exact: true }).click();
+  const createDialog = page.getByRole('dialog', { name: 'Crear meta de ahorro' });
+  await expect(createDialog).toBeVisible();
+  await expect(createDialog).toHaveCSS('overflow-y', 'auto');
+  expect((await createDialog.boundingBox())?.width).toBe(320);
   const createForm = page.getByRole('form', { name: 'Crear meta de ahorro' });
   await createForm.getByLabel('Nombre de la meta').fill('Viaje al sur');
   await createForm.getByLabel('Importe objetivo').fill('0');
@@ -258,6 +283,7 @@ test('tracks goal contributions without creating movements or changing accounts'
     320,
   );
 
+  await goal.getByRole('button', { name: 'Registrar aporte' }).click();
   const contributionForm = goal.getByRole('form', { name: 'Registrar aporte' });
   await contributionForm.getByLabel('Importe del aporte').fill('0');
   await contributionForm.getByLabel('Fecha del aporte').fill('2026-09-26');
@@ -270,6 +296,7 @@ test('tracks goal contributions without creating movements or changing accounts'
   await contributionForm.getByRole('button', { name: 'Agregar aporte' }).click();
   await expect(goal).toContainText('ARS 1.250,50');
 
+  await goal.getByRole('button', { name: 'Registrar aporte' }).click();
   await contributionForm.getByLabel('Importe del aporte').fill('0.10');
   await contributionForm.getByLabel('Fecha del aporte').fill('2026-09-26');
   await contributionForm.getByRole('button', { name: 'Agregar aporte' }).click();
@@ -284,6 +311,12 @@ test('tracks goal contributions without creating movements or changing accounts'
   expect(backend.contributions[0]?.goal_id).toBe(backend.goals[0]?.id);
   expect(backend.contributions[1]?.goal_id).toBe(backend.goals[0]?.id);
   expect(backend.contributionPayloads[0]).not.toHaveProperty('currency');
+
+  page.on('dialog', (dialog) => dialog.accept());
+  await goal.getByRole('button', { name: 'Eliminar meta Viaje al sur' }).click();
+  await expect(goal).toHaveCount(0);
+  expect(backend.goals).toHaveLength(0);
+  expect(backend.contributions).toHaveLength(0);
   expect(backend.movementWrites).toBe(0);
   expect(backend.accountWrites).toBe(0);
 });

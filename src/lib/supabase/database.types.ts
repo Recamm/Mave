@@ -118,6 +118,7 @@ export type Database = {
       };
       financial_accounts: {
         Row: {
+          archived_at: string | null;
           created_at: string;
           currency: 'ARS' | 'USD';
           id: string;
@@ -128,6 +129,7 @@ export type Database = {
           user_id: string;
         };
         Insert: {
+          archived_at?: string | null;
           created_at?: string;
           currency: 'ARS' | 'USD';
           id?: string;
@@ -137,6 +139,7 @@ export type Database = {
           user_id?: string;
         };
         Update: {
+          archived_at?: string | null;
           created_at?: string;
           currency?: 'ARS' | 'USD';
           id?: string;
@@ -430,6 +433,10 @@ export type Database = {
           p_source_account_id: string;
         };
         Returns: TransferRow;
+      };
+      delete_archived_financial_account: {
+        Args: { p_account_id: string };
+        Returns: 'deleted' | 'referenced' | 'unavailable';
       };
     };
     Enums: { [_ in never]: never };

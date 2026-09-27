@@ -5,12 +5,15 @@ import { parseDecimal, serializeDecimal } from '../../lib/money/decimal';
 type AccountRow = Database['public']['Tables']['financial_accounts']['Row'];
 type AccountSelectRow = Pick<
   AccountRow,
-  'created_at' | 'currency' | 'id' | 'kind' | 'name' | 'opening_balance_text'
+  'archived_at' | 'created_at' | 'currency' | 'id' | 'kind' | 'name' | 'opening_balance_text'
 >;
 type AccountClient = NonNullable<ReturnType<typeof getSupabaseClient>>;
 type AccountClientProvider = () => AccountClient | null;
 
-export type FinancialAccount = Pick<AccountRow, 'currency' | 'id' | 'kind' | 'name'> & {
+export type FinancialAccount = Pick<
+  AccountRow,
+  'archived_at' | 'currency' | 'id' | 'kind' | 'name'
+> & {
   createdAt: string;
   openingBalance: string | null;
 };
@@ -26,7 +29,7 @@ export class FinancialAccountInputError extends Error {
   }
 }
 
-const accountFields = 'id,name,kind,currency,opening_balance_text,created_at' as const;
+const accountFields = 'id,name,kind,currency,opening_balance_text,created_at,archived_at' as const;
 
 function mapAccount(row: AccountSelectRow): FinancialAccount {
   return {
@@ -34,6 +37,7 @@ function mapAccount(row: AccountSelectRow): FinancialAccount {
     name: row.name,
     kind: row.kind,
     currency: row.currency,
+    archived_at: row.archived_at,
     openingBalance: row.opening_balance_text,
     createdAt: row.created_at,
   };
@@ -70,11 +74,12 @@ export function createAccountService(clientProvider: AccountClientProvider = get
   }
 
   return {
-    async listAccounts(): Promise<FinancialAccount[]> {
-      const { data, error } = await requireClient()
-        .from('financial_accounts')
-        .select(accountFields)
-        .order('name', { ascending: true });
+    async listAccounts({ includeArchived = false }: { includeArchived?: boolean } = {}): Promise<
+      FinancialAccount[]
+    > {
+      const accountQuery = requireClient().from('financial_accounts').select(accountFields);
+      const query = includeArchived ? accountQuery : accountQuery.is('archived_at', null);
+      const { data, error } = await query.order('name', { ascending: true });
 
       if (error) {
         throw error;
@@ -95,6 +100,54 @@ export function createAccountService(clientProvider: AccountClientProvider = get
       }
 
       return mapAccount(data);
+    },
+
+    async archiveAccount(id: string): Promise<void> {
+      const { data, error } = await requireClient()
+        .from('financial_accounts')
+        .update({ archived_at: new Date().toISOString() })
+        .eq('id', id)
+        .is('archived_at', null)
+        .select('id')
+        .maybeSingle();
+
+      if (error) {
+        throw error;
+      }
+      if (!data) {
+        throw new Error('Financial account is unavailable.');
+      }
+    },
+
+    async restoreAccount(id: string): Promise<void> {
+      const { data, error } = await requireClient()
+        .from('financial_accounts')
+        .update({ archived_at: null })
+        .eq('id', id)
+        .not('archived_at', 'is', null)
+        .select('id')
+        .maybeSingle();
+
+      if (error) {
+        throw error;
+      }
+      if (!data) {
+        throw new Error('Financial account is unavailable.');
+      }
+    },
+
+    async permanentlyDeleteArchivedAccount(
+      id: string,
+    ): Promise<'deleted' | 'referenced' | 'unavailable'> {
+      const { data, error } = await requireClient().rpc('delete_archived_financial_account', {
+        p_account_id: id,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      return data;
     },
   };
 }

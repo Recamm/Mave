@@ -7,6 +7,7 @@ const categoryId = '10000000-0000-0000-0000-000000000001';
 const timestamp = '2026-09-26T12:00:00.000Z';
 
 type FinancialAccountFixture = {
+  archived_at: string | null;
   created_at: string;
   currency: 'ARS' | 'USD';
   id: string;
@@ -30,16 +31,20 @@ type TransferFixture = {
 };
 
 type BackendState = {
+  accountReadDelayMs: number;
   accounts: FinancialAccountFixture[];
+  permanentDeleteRequests: string[];
   transfers: TransferFixture[];
 };
 
 async function installSupabaseMock(page: Page): Promise<BackendState> {
   const state: BackendState = {
+    accountReadDelayMs: 0,
     accounts: [
       {
         id: '20000000-0000-0000-0000-000099999999',
         user_id: ownerTwo,
+        archived_at: null,
         name: 'Cuenta privada ajena',
         kind: 'bank',
         currency: 'ARS',
@@ -48,6 +53,7 @@ async function installSupabaseMock(page: Page): Promise<BackendState> {
         created_at: timestamp,
       },
     ],
+    permanentDeleteRequests: [],
     transfers: [],
   };
   const operations = new Map<string, TransferFixture>();
@@ -116,10 +122,62 @@ async function installSupabaseMock(page: Page): Promise<BackendState> {
     }
 
     if (url.pathname === '/rest/v1/financial_accounts' && request.method() === 'GET') {
+      if (state.accountReadDelayMs > 0) {
+        await new Promise((resolve) => setTimeout(resolve, state.accountReadDelayMs));
+      }
       const accounts = state.accounts
         .filter((account) => account.user_id === ownerId)
+        .filter(
+          (account) =>
+            url.searchParams.get('archived_at') !== 'is.null' || account.archived_at === null,
+        )
         .sort((left, right) => left.name.localeCompare(right.name));
       await respond(accounts);
+      return;
+    }
+
+    if (url.pathname === '/rest/v1/financial_accounts' && request.method() === 'PATCH') {
+      const accountId = url.searchParams.get('id')?.replace(/^eq\./, '');
+      const input = request.postDataJSON() as { archived_at: string | null };
+      const account = state.accounts.find(
+        (candidate) => candidate.id === accountId && candidate.user_id === ownerId,
+      );
+      if (!account) {
+        await respond({ message: 'Account not found.' }, 404);
+        return;
+      }
+
+      account.archived_at = input.archived_at;
+      await respond({ id: account.id });
+      return;
+    }
+
+    if (
+      url.pathname === '/rest/v1/rpc/delete_archived_financial_account' &&
+      request.method() === 'POST'
+    ) {
+      const { p_account_id: accountId } = request.postDataJSON() as { p_account_id: string };
+      state.permanentDeleteRequests.push(accountId);
+      const account = state.accounts.find(
+        (candidate) => candidate.id === accountId && candidate.user_id === ownerId,
+      );
+      if (!account || !account.archived_at) {
+        await respond('unavailable');
+        return;
+      }
+      if (
+        state.transfers.some(
+          (transfer) =>
+            transfer.source_account_id === accountId ||
+            transfer.destination_account_id === accountId,
+        )
+      ) {
+        await respond('referenced');
+        return;
+      }
+
+      state.accounts = state.accounts.filter((candidate) => candidate.id !== accountId);
+      await respond('deleted');
       return;
     }
 
@@ -135,6 +193,7 @@ async function installSupabaseMock(page: Page): Promise<BackendState> {
         ...input,
         id: `20000000-0000-0000-0000-${String(accountSequence).padStart(12, '0')}`,
         user_id: ownerId,
+        archived_at: null,
         opening_balance_text: input.opening_balance,
         created_at: timestamp,
       };
@@ -149,6 +208,16 @@ async function installSupabaseMock(page: Page): Promise<BackendState> {
     }
 
     if (url.pathname === '/rest/v1/refunds' && request.method() === 'GET') {
+      await respond([]);
+      return;
+    }
+
+    if (url.pathname === '/rest/v1/goals' && request.method() === 'GET') {
+      await respond([]);
+      return;
+    }
+
+    if (url.pathname === '/rest/v1/goal_contributions' && request.method() === 'GET') {
       await respond([]);
       return;
     }
@@ -263,6 +332,12 @@ async function createAccount(
     openingBalance: string;
   },
 ) {
+  const accountsPanel = page.locator('details.accounts-panel');
+  if ((await accountsPanel.getAttribute('open')) === null) {
+    await accountsPanel.locator('summary').click();
+  }
+
+  await page.getByRole('button', { name: 'Agregar cuenta', exact: true }).click();
   const form = page.getByRole('form', { name: 'Crear cuenta financiera' });
   await form.getByLabel('Nombre de cuenta').fill(input.name);
   await form.getByLabel('Tipo de cuenta').selectOption(input.kind);
@@ -276,14 +351,58 @@ async function createAccount(
   ).toBeVisible();
 }
 
+async function pullToRefresh(page: Page) {
+  await page.evaluate(() => {
+    window.scrollTo(0, 0);
+    const accountsPage = document.querySelector('.accounts-page');
+    if (!accountsPage) {
+      throw new Error('The accounts page must be mounted.');
+    }
+
+    const startTouch = new Touch({ identifier: 1, target: accountsPage, clientX: 40, clientY: 20 });
+    const endTouch = new Touch({ identifier: 1, target: accountsPage, clientX: 40, clientY: 110 });
+    accountsPage.dispatchEvent(
+      new TouchEvent('touchstart', {
+        bubbles: true,
+        cancelable: true,
+        touches: [startTouch],
+        targetTouches: [startTouch],
+        changedTouches: [startTouch],
+      }),
+    );
+    accountsPage.dispatchEvent(
+      new TouchEvent('touchmove', {
+        bubbles: true,
+        cancelable: true,
+        touches: [endTouch],
+        targetTouches: [endTouch],
+        changedTouches: [endTouch],
+      }),
+    );
+    accountsPage.dispatchEvent(
+      new TouchEvent('touchend', {
+        bubbles: true,
+        cancelable: true,
+        touches: [],
+        targetTouches: [],
+        changedTouches: [endTouch],
+      }),
+    );
+  });
+}
+
 test('manages financial accounts and records only valid same-currency transfers', async ({
   page,
 }) => {
   const backend = await installSupabaseMock(page);
   await signUp(page);
 
-  await page.getByRole('link', { name: 'Cuentas', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Cuentas y transferencias' })).toBeVisible();
+  await page.getByRole('link', { name: 'Gestión', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Gestión financiera' })).toBeVisible();
+  const accountsPanel = page.locator('details.accounts-panel');
+  await expect(accountsPanel).not.toHaveAttribute('open', '');
+  await accountsPanel.locator('summary').click();
+  await expect(accountsPanel).toHaveAttribute('open', '');
 
   await createAccount(page, {
     name: 'Efectivo ARS',
@@ -310,6 +429,7 @@ test('manages financial accounts and records only valid same-currency transfers'
     openingBalance: '0',
   });
 
+  await page.getByRole('button', { name: 'Registrar transferencia', exact: true }).click();
   const transferForm = page.getByRole('form', { name: 'Registrar transferencia' });
   const source = transferForm.getByLabel('Cuenta de origen');
   const destination = transferForm.getByLabel('Cuenta de destino');
@@ -328,6 +448,9 @@ test('manages financial accounts and records only valid same-currency transfers'
   await transferForm.getByLabel('Fecha').fill('2026-09-26');
   await transferForm.getByRole('button', { name: 'Registrar transferencia' }).click();
 
+  const transferHistoryPanel = page.locator('details.transfer-history');
+  await expect(transferHistoryPanel).not.toHaveAttribute('open', '');
+  await transferHistoryPanel.locator('summary').click();
   const history = page.getByRole('list', { name: 'Historial de transferencias' });
   await expect(history).toContainText('Efectivo ARS');
   await expect(history).toContainText('Banco ARS');
@@ -344,11 +467,145 @@ test('manages financial accounts and records only valid same-currency transfers'
     'ARS 225,50',
   );
   expect(backend.accounts.filter((account) => account.user_id === ownerOne)).toHaveLength(4);
-
   await page.getByRole('link', { name: 'Inicio', exact: true }).click();
-  const accountSelector = page.getByLabel('Cuenta activa');
-  await expect(accountSelector).toHaveValue(bank.id);
-  await expect(page.getByLabel('Balance actual')).toHaveText('ARS 225,50');
-  await accountSelector.selectOption(cash.id);
+  const desktopOverview = page.locator('.dashboard-overview');
+  const desktopOverviewBounds = await desktopOverview.boundingBox();
+  const desktopBody = page.locator('.dashboard-overview__body');
+  const desktopBodyBounds = await desktopBody.boundingBox();
+  const desktopBalance = page.getByRole('region', { name: 'Balance de la cuenta seleccionada' });
+  const desktopAccountSelector = page.getByRole('combobox', { name: 'Cuenta principal' });
+  await expect(desktopAccountSelector).toBeVisible();
+  await desktopAccountSelector.selectOption(bank.id);
+  const desktopBalanceBounds = await desktopBalance.boundingBox();
+  const desktopAccountBounds = await desktopAccountSelector.boundingBox();
+  const desktopAmountBounds = await page.locator('.dashboard-balance__amount-group').boundingBox();
+  const desktopFlowsBounds = await page.locator('.dashboard-flows').boundingBox();
+  const desktopActionsBounds = await desktopBody.locator('.dashboard-actions__list').boundingBox();
+  const desktopNewMovementBounds = await page
+    .getByRole('button', { name: 'Nuevo movimiento' })
+    .boundingBox();
+  const desktopTransferBounds = await page.getByRole('link', { name: 'Transferir' }).boundingBox();
+  if (
+    !desktopBalanceBounds ||
+    !desktopOverviewBounds ||
+    !desktopBodyBounds ||
+    !desktopAccountBounds ||
+    !desktopAmountBounds ||
+    !desktopFlowsBounds ||
+    !desktopActionsBounds ||
+    !desktopNewMovementBounds ||
+    !desktopTransferBounds
+  ) {
+    throw new Error('The desktop account overview must have visible bounds.');
+  }
+  expect(
+    Math.abs(
+      desktopAccountBounds.x +
+        desktopAccountBounds.width / 2 -
+        (desktopOverviewBounds.x + desktopOverviewBounds.width / 2),
+    ),
+  ).toBeLessThanOrEqual(1);
+  expect(desktopAccountBounds.y + desktopAccountBounds.height).toBeLessThan(desktopBodyBounds.y);
+  expect(desktopFlowsBounds.y).toBeGreaterThan(desktopAmountBounds.y);
+  expect(
+    Math.abs(
+      desktopBalanceBounds.y +
+        desktopBalanceBounds.height / 2 -
+        (desktopActionsBounds.y + desktopActionsBounds.height / 2),
+    ),
+  ).toBeLessThanOrEqual(1);
+  expect(desktopActionsBounds.x).toBeGreaterThan(
+    desktopBalanceBounds.x + desktopBalanceBounds.width,
+  );
+  expect(desktopTransferBounds.y).toBeGreaterThan(desktopNewMovementBounds.y);
+
+  await page.getByRole('link', { name: 'Gestión', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Gestión financiera' })).toBeVisible();
+  await expect(accountsPanel).not.toHaveAttribute('open', '');
+  await accountsPanel.locator('summary').click();
+  backend.accountReadDelayMs = 250;
+  await expect(page.getByRole('button', { name: 'Actualizar' })).toHaveCount(0);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await pullToRefresh(page);
+  const refreshStatus = page.getByRole('status', {
+    name: 'Actualizando cuentas y transferencias',
+  });
+  await expect(refreshStatus).toBeVisible();
+  await expect(refreshStatus).toBeHidden();
+  backend.accountReadDelayMs = 0;
+  await accountsList
+    .getByRole('button', { name: 'Establecer Efectivo ARS como cuenta principal' })
+    .click();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole('link', { name: 'Inicio', exact: true }).click();
+  const accountSelector = page.getByRole('combobox', { name: 'Cuenta principal' });
+  await expect(accountSelector).toHaveValue(cash.id);
+  const headerBounds = await page.locator('.session-strip').boundingBox();
+  const accountSelectorBounds = await accountSelector.boundingBox();
+  if (!headerBounds || !accountSelectorBounds) {
+    throw new Error('The mobile header and account selector must have visible bounds.');
+  }
+  expect(accountSelectorBounds.y - headerBounds.y - headerBounds.height).toBeLessThan(32);
   await expect(page.getByLabel('Balance actual')).toHaveText('ARS 874,50');
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Inicio' })).toBeVisible();
+  await expect(accountSelector).toHaveValue(cash.id);
+  await accountSelector.selectOption(bank.id);
+  await expect(page.getByLabel('Balance actual')).toHaveText('ARS 225,50');
+
+  await page.getByRole('link', { name: 'Gestión', exact: true }).click();
+  await page.locator('details.accounts-panel > summary').click();
+  const activeAccounts = page.getByRole('list', { name: 'Cuentas financieras' });
+  const confirmationMessages: string[] = [];
+  let cancelNextConfirmation = false;
+  page.on('dialog', async (dialog) => {
+    confirmationMessages.push(dialog.message());
+    if (cancelNextConfirmation) {
+      cancelNextConfirmation = false;
+      await dialog.dismiss();
+      return;
+    }
+    await dialog.accept();
+  });
+  await activeAccounts.getByRole('button', { name: 'Eliminar Banco ARS' }).click();
+  await expect(activeAccounts.getByRole('listitem').filter({ hasText: 'Banco ARS' })).toHaveCount(
+    0,
+  );
+  await page.getByText(/Cuentas archivadas/).click();
+  const archivedAccounts = page.getByRole('list', { name: 'Cuentas archivadas' });
+  await archivedAccounts
+    .getByRole('button', { name: 'Eliminar permanentemente Banco ARS' })
+    .click();
+  await expect(
+    page.getByText(/No se puede eliminar Banco ARS: conserva movimientos/),
+  ).toBeVisible();
+  expect(backend.permanentDeleteRequests).toEqual([bank.id]);
+  await page.getByRole('button', { name: 'Restaurar Banco ARS' }).click();
+  await expect(activeAccounts.getByRole('listitem').filter({ hasText: 'Banco ARS' })).toBeVisible();
+
+  const otherAccount = backend.accounts.find((account) => account.name === 'Otra fuente');
+  if (!otherAccount) {
+    throw new Error('The unused account fixture was not created.');
+  }
+  await activeAccounts.getByRole('button', { name: 'Eliminar Otra fuente' }).click();
+  await page.getByText(/Cuentas archivadas/).click();
+  const permanentlyDeleteOther = archivedAccounts.getByRole('button', {
+    name: 'Eliminar permanentemente Otra fuente',
+  });
+  cancelNextConfirmation = true;
+  await permanentlyDeleteOther.click();
+  await expect(
+    archivedAccounts.getByRole('listitem').filter({ hasText: 'Otra fuente' }),
+  ).toBeVisible();
+  expect(backend.permanentDeleteRequests).toEqual([bank.id]);
+  await permanentlyDeleteOther.click();
+  await expect(
+    archivedAccounts.getByRole('listitem').filter({ hasText: 'Otra fuente' }),
+  ).toHaveCount(0);
+  expect(backend.accounts.some((account) => account.id === otherAccount.id)).toBe(false);
+  expect(confirmationMessages).toContain(
+    '¿Eliminar permanentemente Banco ARS? Esta acción no se puede deshacer.',
+  );
+  expect(backend.permanentDeleteRequests).toEqual([bank.id, otherAccount.id]);
 });

@@ -94,6 +94,12 @@ export function createOutboxStore({ databaseName = defaultDatabaseName }: Outbox
       );
     },
 
+    async hasPendingAccountReference(ownerId: string, accountId: string): Promise<boolean> {
+      const database = await getDatabase();
+      const entries = await database.getAllFromIndex('operations', 'by-owner', ownerId);
+      return entries.some((entry) => entry.payload?.financialAccountId === accountId);
+    },
+
     async updateStatus(
       ownerId: string,
       operationId: string,

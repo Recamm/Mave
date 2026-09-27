@@ -208,7 +208,14 @@ async function signUp(page: Page) {
   ).toBeAttached();
 }
 
-function rowForNote(page: Page, note: string) {
+async function rowForNote(page: Page, note: string) {
+  const generalView = page
+    .getByRole('group', { name: 'Vista del historial' })
+    .getByRole('button', { name: 'General' });
+  if ((await generalView.getAttribute('aria-pressed')) !== 'true') {
+    await generalView.click();
+  }
+
   return page
     .getByRole('list', { name: 'Historial de movimientos' })
     .getByRole('listitem')
@@ -237,12 +244,20 @@ test('warns, cancels during grace, then purges pending sync at expiry', async ({
   backend.syncMode = 'offline';
   await submitMovement(page, '25.00', 'Pending expense one');
   await submitMovement(page, '10.00', 'Pending expense two');
-  await expect(rowForNote(page, 'Pending expense one')).toBeVisible();
-  await expect(rowForNote(page, 'Pending expense two')).toBeVisible();
+  await expect(await rowForNote(page, 'Pending expense one')).toBeVisible();
+  await expect(await rowForNote(page, 'Pending expense two')).toBeVisible();
   expect(backend.offlineSyncAttempts).toBe(2);
 
   await page.goto('/settings');
-  await expect(page.getByRole('heading', { name: 'Mi perfil' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Configuración' })).toBeVisible();
+  await page.getByRole('link', { name: /Cuenta/ }).click();
+  await expect(page.getByRole('heading', { exact: true, name: 'Cuenta' })).toBeVisible();
+
+  await page.getByText('Cambiar correo', { exact: true }).click();
+  await expect(page.getByLabel('Correo nuevo')).toBeVisible();
+  await page.getByText('Cambiar contraseña', { exact: true }).click();
+  await expect(page.getByLabel('Contraseña nueva', { exact: true })).toBeVisible();
+
   await page.getByRole('button', { name: 'Solicitar eliminación' }).click();
 
   const confirmation = page.getByRole('dialog', { name: 'Confirmar eliminación de cuenta' });
@@ -268,15 +283,15 @@ test('warns, cancels during grace, then purges pending sync at expiry', async ({
   expect(dueAt).toBe('2026-10-26T12:00:00.000Z');
 
   backend.serverNow = dueAt;
-  await page.goto('/settings');
+  await page.goto('/profile?section=account');
   await expect(page.getByText('La fecha límite venció')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Cancelar solicitud' })).toHaveCount(0);
 
   backend.syncMode = 'expired';
   await page.goto('/');
   await expect.poll(() => backend.expiredSyncMovementIds.length).toBe(1);
-  await expect(rowForNote(page, 'Pending expense one')).toHaveCount(0);
-  await expect(rowForNote(page, 'Pending expense two')).toHaveCount(0);
+  await expect(await rowForNote(page, 'Pending expense one')).toHaveCount(0);
+  await expect(await rowForNote(page, 'Pending expense two')).toHaveCount(0);
   await expect(page.getByText(/pendientes se eliminaron de este dispositivo/i)).toBeVisible();
 
   await page.reload();

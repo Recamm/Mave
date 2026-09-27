@@ -61,7 +61,9 @@ export function MovementForm({
     (category) => category.archived_at === null || category.id === movement?.category_id,
   );
   const selectableAccounts = financialAccounts.filter(
-    (account) => account.currency === draft.currency,
+    (account) =>
+      account.currency === draft.currency &&
+      (account.archived_at === null || account.id === movement?.financial_account_id),
   );
 
   function updateDraft<Key extends keyof MovementDraft>(key: Key, value: MovementDraft[Key]) {

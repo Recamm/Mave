@@ -222,6 +222,22 @@ export function createGoalService(clientProvider: GoalClientProvider = getSupaba
       return { ...mapGoal(data), contributions: [], progress: '0' };
     },
 
+    async deleteGoal(id: string): Promise<void> {
+      const { data, error } = await requireClient()
+        .from('goals')
+        .delete()
+        .eq('id', id)
+        .select('id')
+        .maybeSingle();
+
+      if (error) {
+        throw error;
+      }
+      if (!data) {
+        throw new Error('Savings goal is unavailable.');
+      }
+    },
+
     async addContribution(input: GoalContributionInput): Promise<GoalContribution> {
       const { data, error } = await requireClient()
         .from('goal_contributions')

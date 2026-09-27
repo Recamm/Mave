@@ -426,7 +426,14 @@ async function signUp(page: Page, email: string, backend: BackendState) {
   ).toBeAttached();
 }
 
-function rowForNote(page: Page, note: string) {
+async function rowForNote(page: Page, note: string) {
+  const generalView = page
+    .getByRole('group', { name: 'Vista del historial' })
+    .getByRole('button', { name: 'General' });
+  if ((await generalView.getAttribute('aria-pressed')) !== 'true') {
+    await generalView.click();
+  }
+
   return page
     .getByRole('list', { name: 'Historial de movimientos' })
     .getByRole('listitem')
@@ -452,14 +459,14 @@ test('keeps an offline movement after reload and retries an idempotent sync', as
   backend.dataAvailable = false;
   await submitMovement(page, '1250.50', 'Compra sin conexión');
 
-  const firstRow = rowForNote(page, 'Compra sin conexión');
+  const firstRow = await rowForNote(page, 'Compra sin conexión');
   await expect(firstRow).toBeVisible();
   await expect(firstRow.getByLabel('Estado de sincronización')).toHaveText(
     /Solo en este dispositivo|Reintento pendiente/,
   );
 
   await page.reload();
-  const rowAfterOfflineReload = rowForNote(page, 'Compra sin conexión');
+  const rowAfterOfflineReload = await rowForNote(page, 'Compra sin conexión');
   await expect(rowAfterOfflineReload).toBeVisible();
   await expect(rowAfterOfflineReload.getByLabel('Estado de sincronización')).toHaveText(
     'Reintento pendiente',
@@ -468,13 +475,13 @@ test('keeps an offline movement after reload and retries an idempotent sync', as
   backend.dataAvailable = true;
   backend.dropNextMovementResponse = true;
   await page.reload();
-  const rowAfterLostResponse = rowForNote(page, 'Compra sin conexión');
+  const rowAfterLostResponse = await rowForNote(page, 'Compra sin conexión');
   await expect(rowAfterLostResponse.getByLabel('Estado de sincronización')).toHaveText(
     'Reintento pendiente',
   );
 
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
-  const syncedRow = rowForNote(page, 'Compra sin conexión');
+  const syncedRow = await rowForNote(page, 'Compra sin conexión');
   await expect(syncedRow.getByLabel('Estado de sincronización')).toHaveText('Sincronizado');
   await expect(
     page.getByRole('list', { name: 'Historial de movimientos' }).getByRole('listitem'),
@@ -491,21 +498,26 @@ test('warns before logout and never exposes a pending movement to another accoun
   await signUp(page, 'offline-owner@example.invalid', backend);
   backend.dataAvailable = false;
   await submitMovement(page, '75.00', 'Privado de la primera cuenta');
-  await expect(rowForNote(page, 'Privado de la primera cuenta')).toBeVisible();
+  await expect(await rowForNote(page, 'Privado de la primera cuenta')).toBeVisible();
 
   let logoutWarning = '';
   page.on('dialog', async (dialog) => {
     logoutWarning = dialog.message();
     await dialog.accept();
   });
-  await page.getByRole('link', { name: 'Perfil', exact: true }).click();
+  await page.getByRole('link', { name: 'Configuración', exact: true }).click();
+  await page.getByRole('link', { name: /Cuenta/ }).click();
   await page.getByRole('button', { name: 'Cerrar sesión' }).click();
   await expect(page.getByRole('heading', { name: 'Mave' })).toBeVisible();
   expect(logoutWarning).toContain('pendientes');
 
   backend.dataAvailable = true;
   await signUp(page, 'other-owner@example.invalid', backend);
-  await expect(rowForNote(page, 'Privado de la primera cuenta')).toHaveCount(0);
+  await page
+    .getByRole('dialog', { name: 'Registrar un movimiento' })
+    .getByRole('button', { name: 'Cerrar formulario' })
+    .click();
+  await expect(await rowForNote(page, 'Privado de la primera cuenta')).toHaveCount(0);
   expect(backend.syncRequestOwners).not.toContain(ownerTwo);
 });
 
@@ -514,7 +526,7 @@ test('shows both conflict revisions and applies only the chosen movement', async
   await signUp(page, 'conflict-owner@example.invalid', backend);
   await submitMovement(page, '100.00', 'Gasto en conflicto');
 
-  const movementRow = rowForNote(page, 'Gasto en conflicto');
+  const movementRow = await rowForNote(page, 'Gasto en conflicto');
   await movementRow.locator('details').first().locator('summary').click();
   await expect(movementRow.getByLabel('Estado de sincronización')).toHaveText('Sincronizado');
   await movementRow.getByRole('button', { name: 'Editar movimiento' }).click();
@@ -548,7 +560,7 @@ test('shows both conflict revisions and applies only the chosen movement', async
     .getByRole('button', { name: 'Conservar versión del dispositivo' })
     .click();
 
-  const resolvedRow = rowForNote(page, 'Gasto en conflicto');
+  const resolvedRow = await rowForNote(page, 'Gasto en conflicto');
   await expect(resolvedRow).toContainText('ARS 150,00');
   await expect(resolvedRow.getByLabel('Estado de sincronización')).toHaveText('Sincronizado');
   expect(canonical.amount_text).toBe('150.00');

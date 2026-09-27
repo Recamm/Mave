@@ -117,6 +117,10 @@ export function createSyncEngine({
     return (await outbox.list(ownerId)).length;
   }
 
+  async function hasPendingAccountReference(ownerId: string, accountId: string): Promise<boolean> {
+    return outbox.hasPendingAccountReference(ownerId, accountId);
+  }
+
   async function listOpenConflicts(ownerId: string): Promise<MovementConflict[]> {
     const client = await getClientForOwner(ownerId);
     if (!client) {
@@ -361,6 +365,7 @@ export function createSyncEngine({
 
   return {
     getPendingCount,
+    hasPendingAccountReference,
     listOpenConflicts,
     listVisibleMovements,
     resolveMovementConflict,

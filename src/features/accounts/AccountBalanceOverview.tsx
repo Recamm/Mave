@@ -1,6 +1,6 @@
-import { ChevronDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { FeedbackMessage } from '../../app/components/FeedbackMessage';
+import { LoadingIndicator } from '../../app/components/LoadingIndicator';
 import { formatMoney } from '../../lib/money/format';
 import type { Movement } from '../movements/movementService';
 import type { Refund } from '../movements/refundService';
@@ -11,7 +11,6 @@ import { calculatePeriodSummary, getSummaryPeriod } from '../summaries/periodSum
 
 type AccountBalanceOverviewProps = {
   accounts: FinancialAccount[];
-  onAccountChange: (accountId: string) => void;
   period: string;
   selectedAccountId: string;
   hasLoadError: boolean;
@@ -23,7 +22,6 @@ type AccountBalanceOverviewProps = {
 
 export function AccountBalanceOverview({
   accounts,
-  onAccountChange,
   period,
   selectedAccountId,
   hasLoadError,
@@ -95,7 +93,7 @@ export function AccountBalanceOverview({
   return (
     <section aria-label="Balance de la cuenta seleccionada" className="dashboard-balance">
       {isLoading ? (
-        <FeedbackMessage tone="info">Cargando balance.</FeedbackMessage>
+        <LoadingIndicator label="Cargando balance" />
       ) : hasLoadError ? (
         <FeedbackMessage tone="error">
           No se pudieron cargar los saldos de tus cuentas.
@@ -115,21 +113,6 @@ export function AccountBalanceOverview({
         </FeedbackMessage>
       ) : (
         <>
-          <label className="dashboard-account-selector">
-            <span className="visually-hidden">Cuenta activa</span>
-            <select
-              aria-label="Cuenta activa"
-              onChange={(event) => onAccountChange(event.target.value)}
-              value={selectedAccount.id}
-            >
-              {accounts.map((account) => (
-                <option key={account.id} value={account.id}>
-                  {account.name}
-                </option>
-              ))}
-            </select>
-            <ChevronDown aria-hidden="true" size={17} strokeWidth={2.5} />
-          </label>
           <div className="dashboard-balance__amount-group">
             <p>Balance</p>
             <output aria-label="Balance actual">

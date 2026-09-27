@@ -8,6 +8,7 @@ function createMockClient() {
     signUp: vi.fn(),
     signInWithPassword: vi.fn(),
     resetPasswordForEmail: vi.fn(),
+    updateUser: vi.fn(),
     signOut: vi.fn(),
   };
 
@@ -60,6 +61,38 @@ describe('auth service', () => {
     expect(auth.resetPasswordForEmail).toHaveBeenCalledWith('person@example.invalid', {
       redirectTo: window.location.origin,
     });
+  });
+
+  it('updates email and password through Supabase Auth', async () => {
+    const { auth, client } = createMockClient();
+    auth.updateUser.mockResolvedValue({ data: { user: {} }, error: null });
+    const service = createAuthService(
+      () => client,
+      () => true,
+    );
+
+    await service.updateEmail(' new@example.invalid ');
+    await service.updatePassword('new-password');
+
+    expect(auth.updateUser).toHaveBeenNthCalledWith(
+      1,
+      { email: 'new@example.invalid' },
+      { emailRedirectTo: window.location.origin },
+    );
+    expect(auth.updateUser).toHaveBeenNthCalledWith(2, { password: 'new-password' });
+  });
+
+  it('rejects credential updates while offline before accessing Supabase', async () => {
+    const getClient = vi.fn(() => null);
+    const service = createAuthService(getClient, () => false);
+
+    await expect(service.updateEmail('person@example.invalid')).rejects.toMatchObject({
+      code: 'offline',
+    });
+    await expect(service.updatePassword('new-password')).rejects.toMatchObject({
+      code: 'offline',
+    });
+    expect(getClient).not.toHaveBeenCalled();
   });
 
   it('delegates sign-in and sign-out to Supabase Auth', async () => {

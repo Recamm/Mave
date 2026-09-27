@@ -1,6 +1,6 @@
 import Big from 'big.js';
-import { ChevronDown } from 'lucide-react';
-import { useState } from 'react';
+import { ChevronDown, ChevronRight, X } from 'lucide-react';
+import { useRef, useState } from 'react';
 import {
   getMovementTypeDisplayPreference,
   getMovementTypeLabel,
@@ -8,14 +8,14 @@ import {
   type MovementTypeDisplayPreference,
 } from '../../app/movementTypeDisplay';
 import type { Category } from '../categories/categoryService';
+import { FullPageFormDialog } from '../../app/components/FullPageFormDialog';
 import { RefundForm } from '../movements/RefundForm';
 import type { FinancialAccountOption, Movement } from '../movements/movementService';
 import type { Refund } from '../movements/refundService';
 import { formatCivilDate, formatMoney } from '../../lib/money/format';
-import { getSummaryPeriod } from './periodSummary';
+import { getCurrentPeriod, getSummaryPeriod, type SummaryPeriod } from './periodSummary';
 
 type MovementHistoryProps = {
-  period: string;
   movements: Movement[];
   refunds: Refund[];
   categories: Category[];
@@ -27,7 +27,7 @@ type MovementHistoryProps = {
   onRecordsChanged: () => Promise<void>;
 };
 
-type PeriodHistoryEntry =
+type HistoryEntryData =
   | {
       type: 'movement';
       id: string;
@@ -45,17 +45,19 @@ type PeriodHistoryEntry =
 
 type HistoryView = 'general' | 'categories';
 type HistoryKindFilter = 'all' | 'expense' | 'income';
+type CategoryPeriodMode = 'month' | 'week';
 
 type CategoryHistoryGroup = {
   categoryId: string;
   currency: Movement['currency'];
   kind: Movement['kind'];
   total: Big;
-  entries: PeriodHistoryEntry[];
+  entries: HistoryEntryData[];
 };
 
 type HistoryEntryProps = {
-  entry: PeriodHistoryEntry;
+  entry: HistoryEntryData;
+  showDate?: boolean;
   movementTypeDisplayPreference: MovementTypeDisplayPreference;
   categoryNames: Map<string, string>;
   financialAccounts: FinancialAccountOption[];
@@ -75,7 +77,6 @@ type RefundManagerProps = {
 };
 
 export function MovementHistory({
-  period,
   movements,
   refunds,
   categories,
@@ -86,29 +87,26 @@ export function MovementHistory({
   onDeleteRefund,
   onRecordsChanged,
 }: MovementHistoryProps) {
-  const [view, setView] = useState<HistoryView>('general');
+  const historyDialogRef = useRef<HTMLDialogElement>(null);
+  const [view, setView] = useState<HistoryView>('categories');
   const [kindFilter, setKindFilter] = useState<HistoryKindFilter>('all');
+  const [categoryPeriodMode, setCategoryPeriodMode] = useState<CategoryPeriodMode>('month');
+  const [categoryMonth, setCategoryMonth] = useState(getCurrentPeriod);
+  const [categoryWeek, setCategoryWeek] = useState(getCurrentIsoWeek);
   const [movementTypeDisplayPreference] = useState(() => getMovementTypeDisplayPreference());
   const [expandedCategoryKeys, setExpandedCategoryKeys] = useState<Set<string>>(() => new Set());
-  const dateRange = getSummaryPeriod(period);
-  const movementsInPeriod = movements.filter(
-    (movement) => movement.occurred_on >= dateRange.start && movement.occurred_on <= dateRange.end,
-  );
-  const refundsInPeriod = refunds.filter(
-    (refund) => refund.received_on >= dateRange.start && refund.received_on <= dateRange.end,
-  );
   const movementsById = new Map(movements.map((movement) => [movement.id, movement]));
   const categoryNames = new Map(categories.map((category) => [category.id, category.name]));
   const refundsByExpense = new Map<string, Refund[]>();
 
-  for (const refund of refundsInPeriod) {
+  for (const refund of refunds) {
     const expenseRefunds = refundsByExpense.get(refund.expense_id) ?? [];
     expenseRefunds.push(refund);
     refundsByExpense.set(refund.expense_id, expenseRefunds);
   }
 
-  const movementIdsInPeriod = new Set(movementsInPeriod.map((movement) => movement.id));
-  const historyEntries: PeriodHistoryEntry[] = movementsInPeriod.map((movement) => {
+  const movementIds = new Set(movements.map((movement) => movement.id));
+  const historyEntries: HistoryEntryData[] = movements.map((movement) => {
     const movementRefunds = refundsByExpense.get(movement.id) ?? [];
 
     return {
@@ -124,7 +122,7 @@ export function MovementHistory({
   });
 
   for (const [expenseId, expenseRefunds] of refundsByExpense) {
-    if (movementIdsInPeriod.has(expenseId)) {
+    if (movementIds.has(expenseId)) {
       continue;
     }
 
@@ -149,13 +147,28 @@ export function MovementHistory({
     (left, right) => right.sortDate.localeCompare(left.sortDate) || left.id.localeCompare(right.id),
   );
 
-  const filteredEntries = historyEntries.filter((entry) => {
+  const dialogEntries = historyEntries.filter((entry) => {
     const kind = entry.type === 'movement' ? entry.movement.kind : 'expense';
     return kindFilter === 'all' || kindFilter === kind;
   });
+  const categoryPeriod =
+    categoryPeriodMode === 'month'
+      ? getSummaryPeriod(categoryMonth)
+      : getIsoWeekPeriod(categoryWeek);
+  const categoryEntries = getCategoryHistoryEntries(historyEntries, categoryPeriod);
+  const entriesByDay = new Map<string, HistoryEntryData[]>();
+  for (const entry of dialogEntries) {
+    const date = entry.type === 'movement' ? entry.movement.occurred_on : entry.sortDate;
+    const dayEntries = entriesByDay.get(date) ?? [];
+    dayEntries.push(entry);
+    entriesByDay.set(date, dayEntries);
+  }
+  const historyDays = [...entriesByDay.entries()]
+    .map(([date, entries]) => ({ date, entries }))
+    .sort((left, right) => right.date.localeCompare(left.date));
   const categoryGroupsById = new Map<string, CategoryHistoryGroup>();
 
-  for (const entry of filteredEntries) {
+  for (const entry of categoryEntries) {
     const movement = entry.type === 'movement' ? entry.movement : entry.expense;
     const kind = movement.kind;
     const key = `${movement.category_id}:${movement.currency}:${kind}`;
@@ -184,6 +197,8 @@ export function MovementHistory({
       categoryNames.get(right.categoryId) ?? 'Categoría',
     ),
   );
+  const hasPreviewEntries =
+    view === 'general' ? historyEntries.length > 0 : categoryEntries.length > 0;
 
   function toggleCategoryGroup(key: string) {
     setExpandedCategoryKeys((current) => {
@@ -201,7 +216,7 @@ export function MovementHistory({
     <section aria-labelledby="movement-history-title" className="movement-history">
       <div className="movement-history__heading">
         <h2 id="movement-history-title">Historial</h2>
-        <span>{isLoading ? 'Cargando…' : filteredEntries.length}</span>
+        <span>{isLoading ? 'Cargando…' : historyEntries.length}</span>
       </div>
       <div className="movement-history__controls">
         <div aria-label="Vista del historial" className="movement-history__views" role="group">
@@ -220,24 +235,55 @@ export function MovementHistory({
             Por categoría
           </button>
         </div>
-        <label className="visually-hidden" htmlFor="history-kind-filter">
-          Tipo de movimiento
-        </label>
-        <select
-          id="history-kind-filter"
-          onChange={(event) => setKindFilter(event.target.value as HistoryKindFilter)}
-          value={kindFilter}
-        >
-          <option value="all">Todos</option>
-          <option value="expense">Gastos</option>
-          <option value="income">Ingresos</option>
-        </select>
+        {view === 'categories' ? (
+          <div className="movement-history__category-period">
+            <div
+              aria-label="Período de categorías"
+              className="movement-history__period-views"
+              role="group"
+            >
+              <button
+                aria-pressed={categoryPeriodMode === 'week'}
+                onClick={() => setCategoryPeriodMode('week')}
+                type="button"
+              >
+                Semana
+              </button>
+              <button
+                aria-pressed={categoryPeriodMode === 'month'}
+                onClick={() => setCategoryPeriodMode('month')}
+                type="button"
+              >
+                Mes
+              </button>
+            </div>
+            <label className="visually-hidden" htmlFor={`history-${categoryPeriodMode}-filter`}>
+              {categoryPeriodMode === 'month' ? 'Mes de categorías' : 'Semana de categorías'}
+            </label>
+            <input
+              id={`history-${categoryPeriodMode}-filter`}
+              onChange={(event) => {
+                if (!event.currentTarget.value) {
+                  return;
+                }
+
+                if (categoryPeriodMode === 'month') {
+                  setCategoryMonth(event.currentTarget.value);
+                } else {
+                  setCategoryWeek(event.currentTarget.value);
+                }
+              }}
+              type={categoryPeriodMode}
+              value={categoryPeriodMode === 'month' ? categoryMonth : categoryWeek}
+            />
+          </div>
+        ) : null}
       </div>
 
-      {filteredEntries.length > 0 ? (
+      {hasPreviewEntries ? (
         view === 'general' ? (
           <ol aria-label="Historial de movimientos" className="movement-history__list">
-            {filteredEntries.map((entry) => (
+            {historyEntries.slice(0, 5).map((entry) => (
               <HistoryEntry
                 categoryNames={categoryNames}
                 entry={entry}
@@ -253,7 +299,7 @@ export function MovementHistory({
           </ol>
         ) : (
           <ol aria-label="Movimientos por categoría" className="movement-categories__list">
-            {categoryGroups.map((group) => {
+            {categoryGroups.slice(0, 4).map((group) => {
               const groupKey = `${group.categoryId}:${group.currency}:${group.kind}`;
               const entriesId = `movement-category-${group.categoryId}-${group.currency}-${group.kind}`;
               const isExpanded = expandedCategoryKeys.has(groupKey);
@@ -280,7 +326,7 @@ export function MovementHistory({
                     />
                   </button>
                   <ol className="movement-category__entries" hidden={!isExpanded} id={entriesId}>
-                    {group.entries.map((entry) => (
+                    {group.entries.slice(0, 3).map((entry) => (
                       <HistoryEntry
                         categoryNames={categoryNames}
                         entry={entry}
@@ -293,17 +339,111 @@ export function MovementHistory({
                         onRecordsChanged={onRecordsChanged}
                       />
                     ))}
+                    {group.entries.length > 3 ? (
+                      <li className="movement-category__more">
+                        {group.entries.length - 3} movimientos más
+                      </li>
+                    ) : null}
                   </ol>
                 </li>
               );
             })}
+            {categoryGroups.length > 4 ? (
+              <li className="movement-category__more">
+                {categoryGroups.length - 4} categorías más
+              </li>
+            ) : null}
           </ol>
         )
       ) : (
         <p className="movement-history__empty">
-          {isLoading ? ' ' : 'No hay movimientos en este período.'}
+          {isLoading
+            ? ' '
+            : view === 'categories'
+              ? 'No hay movimientos en este período.'
+              : 'Todavía no hay movimientos.'}
         </p>
       )}
+
+      {historyEntries.length > 0 ? (
+        <button
+          aria-haspopup="dialog"
+          className="movement-history__view-all"
+          onClick={() => historyDialogRef.current?.showModal()}
+          type="button"
+        >
+          Ver todos los movimientos
+          <ChevronRight aria-hidden="true" size={18} />
+        </button>
+      ) : null}
+
+      <dialog
+        aria-labelledby="movement-history-dialog-title"
+        className="movement-history-dialog"
+        ref={historyDialogRef}
+      >
+        <div className="movement-history-dialog__content">
+          <header className="movement-history-dialog__header">
+            <div>
+              <p className="eyebrow">Historial</p>
+              <h2 id="movement-history-dialog-title">Todos los movimientos</h2>
+              <p>{dialogEntries.length} movimientos</p>
+            </div>
+            <button
+              aria-label="Cerrar historial"
+              className="movement-history-dialog__close"
+              onClick={() => historyDialogRef.current?.close()}
+              type="button"
+            >
+              <X aria-hidden="true" size={19} />
+            </button>
+          </header>
+          <div className="movement-history-dialog__filters">
+            <label className="visually-hidden" htmlFor="history-kind-filter-full">
+              Tipo de movimiento
+            </label>
+            <select
+              id="history-kind-filter-full"
+              onChange={(event) => setKindFilter(event.target.value as HistoryKindFilter)}
+              value={kindFilter}
+            >
+              <option value="all">Todos</option>
+              <option value="expense">Gastos</option>
+              <option value="income">Ingresos</option>
+            </select>
+          </div>
+          {historyDays.map((day, index) => {
+            const dayLabel = formatHistoryDay(day.date);
+            return (
+              <section
+                aria-labelledby={`movement-history-day-${index}`}
+                className="movement-history-day"
+                key={day.date}
+              >
+                <h3 id={`movement-history-day-${index}`}>
+                  <time dateTime={day.date}>{dayLabel}</time>
+                </h3>
+                <ol aria-label={`Movimientos del ${dayLabel}`} className="movement-history__list">
+                  {day.entries.map((entry) => (
+                    <HistoryEntry
+                      categoryNames={categoryNames}
+                      entry={entry}
+                      financialAccounts={financialAccounts}
+                      movementTypeDisplayPreference={movementTypeDisplayPreference}
+                      key={`${entry.type}:${entry.id}`}
+                      onDeleteMovement={onDeleteMovement}
+                      onDeleteRefund={onDeleteRefund}
+                      onEditMovement={onEditMovement}
+                      onRecordsChanged={onRecordsChanged}
+                      showDate={false}
+                    />
+                  ))}
+                </ol>
+              </section>
+            );
+          })}
+        </div>
+      </dialog>
     </section>
   );
 }
@@ -327,6 +467,7 @@ function MovementTypeBadge({ kind, preference }: MovementTypeBadgeProps) {
 
 function HistoryEntry({
   entry,
+  showDate = true,
   movementTypeDisplayPreference,
   categoryNames,
   financialAccounts,
@@ -346,7 +487,9 @@ function HistoryEntry({
             <span className="movement-row__kind movement-row__kind--refund">Devolución</span>
             <span className="movement-entry__summary-main">
               <strong>{categoryName}</strong>
-              <time dateTime={entry.sortDate}>{formatCivilDate(entry.sortDate)}</time>
+              {showDate ? (
+                <time dateTime={entry.sortDate}>{formatCivilDate(entry.sortDate)}</time>
+              ) : null}
             </span>
             <strong className="movement-row__amount">
               {formatMoney(refundTotal, entry.expense.currency)}
@@ -379,9 +522,11 @@ function HistoryEntry({
           />
           <span className="movement-entry__summary-main">
             <strong>{categoryName}</strong>
-            <time dateTime={entry.movement.occurred_on}>
-              {formatCivilDate(entry.movement.occurred_on)}
-            </time>
+            {showDate ? (
+              <time dateTime={entry.movement.occurred_on}>
+                {formatCivilDate(entry.movement.occurred_on)}
+              </time>
+            ) : null}
           </span>
           <strong className="movement-row__amount">
             {formatMoney(entry.movement.amount, entry.movement.currency)}
@@ -449,13 +594,12 @@ function RefundManager({
   onDeleteRefund,
   onRecordsChanged,
 }: RefundManagerProps) {
-  const [editingRefund, setEditingRefund] = useState<Refund | null | undefined>(undefined);
   const accountName =
     financialAccounts.find((account) => account.id === expense.financial_account_id)?.name ?? null;
 
-  async function handleSaved() {
+  async function handleSaved(closeDialog: () => void) {
     await onRecordsChanged();
-    setEditingRefund(undefined);
+    closeDialog();
   }
 
   return (
@@ -467,13 +611,18 @@ function RefundManager({
             <time dateTime={refund.received_on}>{formatCivilDate(refund.received_on)}</time>
           </div>
           <div className="movement-refund__actions">
-            <button
-              aria-label="Editar devolución"
-              onClick={() => setEditingRefund(refund)}
-              type="button"
-            >
-              Editar devolución
-            </button>
+            <FullPageFormDialog dialogLabel="Editar devolución" triggerLabel="Editar devolución">
+              {(closeDialog) => (
+                <RefundForm
+                  accountName={accountName}
+                  categoryName={categoryName}
+                  expense={expense}
+                  onCancel={closeDialog}
+                  onSaved={() => handleSaved(closeDialog)}
+                  refund={refund}
+                />
+              )}
+            </FullPageFormDialog>
             <button
               aria-label="Eliminar devolución"
               onClick={() => void onDeleteRefund(refund)}
@@ -484,21 +633,21 @@ function RefundManager({
           </div>
         </div>
       ))}
-      {editingRefund === undefined ? (
-        <button onClick={() => setEditingRefund(null)} type="button">
-          Registrar devolución
-        </button>
-      ) : null}
-      {editingRefund !== undefined ? (
-        <RefundForm
-          accountName={accountName}
-          categoryName={categoryName}
-          expense={expense}
-          onCancel={() => setEditingRefund(undefined)}
-          onSaved={handleSaved}
-          refund={editingRefund}
-        />
-      ) : null}
+      <FullPageFormDialog
+        dialogLabel={`Registrar devolución de ${categoryName}`}
+        triggerLabel="Registrar devolución"
+      >
+        {(closeDialog) => (
+          <RefundForm
+            accountName={accountName}
+            categoryName={categoryName}
+            expense={expense}
+            onCancel={closeDialog}
+            onSaved={() => handleSaved(closeDialog)}
+            refund={null}
+          />
+        )}
+      </FullPageFormDialog>
     </div>
   );
 }
@@ -508,6 +657,109 @@ function latestDate(currentDate: string, candidateDates: string[]): string {
     (latest, candidate) => (candidate > latest ? candidate : latest),
     currentDate,
   );
+}
+
+function getCurrentIsoWeek(): string {
+  return getIsoWeekValue(new Date());
+}
+
+function getIsoWeekValue(date: Date): string {
+  const thursday = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  thursday.setUTCDate(thursday.getUTCDate() + 3 - ((thursday.getUTCDay() + 6) % 7));
+  const weekYear = thursday.getUTCFullYear();
+  const firstThursday = new Date(Date.UTC(weekYear, 0, 4));
+  firstThursday.setUTCDate(firstThursday.getUTCDate() + 3 - ((firstThursday.getUTCDay() + 6) % 7));
+  const week = Math.round((thursday.getTime() - firstThursday.getTime()) / 604_800_000) + 1;
+
+  return `${weekYear}-W${String(week).padStart(2, '0')}`;
+}
+
+function getIsoWeekPeriod(value: string): SummaryPeriod {
+  let match = /^(\d{4})-W(\d{2})$/.exec(value);
+  if (!match) {
+    match = /^(\d{4})-W(\d{2})$/.exec(getCurrentIsoWeek());
+  }
+  if (!match) {
+    return getSummaryPeriod(getCurrentPeriod());
+  }
+
+  const weekYear = Number(match[1]);
+  const week = Number(match[2]);
+  const firstThursday = new Date(Date.UTC(weekYear, 0, 4));
+  firstThursday.setUTCDate(firstThursday.getUTCDate() + 3 - ((firstThursday.getUTCDay() + 6) % 7));
+  const start = new Date(firstThursday);
+  start.setUTCDate(start.getUTCDate() - 3 + (week - 1) * 7);
+  const end = new Date(start);
+  end.setUTCDate(end.getUTCDate() + 6);
+
+  return { start: start.toISOString().slice(0, 10), end: end.toISOString().slice(0, 10) };
+}
+
+function getCategoryHistoryEntries(
+  entries: HistoryEntryData[],
+  period: SummaryPeriod,
+): HistoryEntryData[] {
+  const periodEntries: HistoryEntryData[] = [];
+
+  for (const entry of entries) {
+    const periodRefunds = entry.refunds.filter((refund) =>
+      isWithinHistoryPeriod(refund.received_on, period),
+    );
+
+    if (entry.type === 'refunds') {
+      if (periodRefunds.length > 0) {
+        periodEntries.push({
+          ...entry,
+          sortDate: latestDate(
+            '',
+            periodRefunds.map((refund) => refund.received_on),
+          ),
+          refunds: periodRefunds,
+        });
+      }
+      continue;
+    }
+
+    if (isWithinHistoryPeriod(entry.movement.occurred_on, period)) {
+      periodEntries.push({
+        ...entry,
+        sortDate: latestDate(
+          entry.movement.occurred_on,
+          periodRefunds.map((refund) => refund.received_on),
+        ),
+        refunds: periodRefunds,
+      });
+    } else if (periodRefunds.length > 0) {
+      periodEntries.push({
+        type: 'refunds',
+        id: `${entry.id}:refunds`,
+        sortDate: latestDate(
+          '',
+          periodRefunds.map((refund) => refund.received_on),
+        ),
+        expense: entry.movement,
+        refunds: periodRefunds,
+      });
+    }
+  }
+
+  return periodEntries.sort(
+    (left, right) => right.sortDate.localeCompare(left.sortDate) || left.id.localeCompare(right.id),
+  );
+}
+
+function isWithinHistoryPeriod(date: string, period: SummaryPeriod): boolean {
+  return date >= period.start && date <= period.end;
+}
+
+function formatHistoryDay(date: string): string {
+  return new Intl.DateTimeFormat('es-AR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(`${date}T00:00:00Z`));
 }
 
 function sumRefunds(refunds: Refund[]): Big {

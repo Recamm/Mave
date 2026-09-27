@@ -1,16 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { X } from 'lucide-react';
+import { ChevronDown, X } from 'lucide-react';
 import { FeedbackMessage } from '../../app/components/FeedbackMessage';
 import { useAuthSession } from '../../app/useAuthSession';
 import { AccountBalanceOverview } from '../accounts/AccountBalanceOverview';
+import { getPrimaryAccountId, savePrimaryAccountId } from '../accounts/primaryAccountPreference';
 import { accountService, type FinancialAccount } from '../accounts/accountService';
 import { transferService, type Transfer } from '../accounts/transferService';
 import { categoryService, type Category } from '../categories/categoryService';
 import { MovementForm } from './MovementForm';
 import type { MovementInput } from './movementInput';
 import { movementService, type FinancialAccountOption, type Movement } from './movementService';
-import { PeriodSummary } from '../summaries/PeriodSummaryView';
 import { MovementHistory } from '../summaries/MovementHistory';
 import { getCurrentPeriod } from '../summaries/periodSummary';
 import { summaryService } from '../summaries/summaryService';
@@ -35,7 +35,7 @@ export function MovementList() {
   const [movements, setMovements] = useState<Movement[]>([]);
   const [conflicts, setConflicts] = useState<MovementConflict[]>([]);
   const [refunds, setRefunds] = useState<Refund[]>([]);
-  const [period, setPeriod] = useState(() => getCurrentPeriod());
+  const [period] = useState(() => getCurrentPeriod());
   const [editingMovement, setEditingMovement] = useState<Movement | null>(null);
   const [isMovementFormOpen, setIsMovementFormOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -131,7 +131,7 @@ export function MovementList() {
         const [loadedAccounts, loadedTransfers] = accountOverviewResult.value;
         setAccounts(loadedAccounts);
         setTransfers(loadedTransfers);
-        setSelectedAccountId(ownerId ? getStoredAccountId(ownerId, loadedAccounts) : '');
+        setSelectedAccountId(ownerId ? getPrimaryAccountId(ownerId, loadedAccounts) : '');
       } else {
         setHasAccountOverviewError(true);
       }
@@ -372,11 +372,7 @@ export function MovementList() {
   function handleAccountChange(accountId: string) {
     setSelectedAccountId(accountId);
     if (ownerId) {
-      try {
-        window.localStorage.setItem(`mave.selected-account.${ownerId}`, accountId);
-      } catch {
-        return;
-      }
+      savePrimaryAccountId(ownerId, accountId);
     }
   }
 
@@ -391,36 +387,55 @@ export function MovementList() {
 
   return (
     <main className="movement-page dashboard-page">
-      <header className="movement-page__header">
-        <div>
-          <h1 className="visually-hidden">Inicio</h1>
+      <h1 className="visually-hidden">Inicio</h1>
+
+      <div className="dashboard-overview">
+        {selectedAccount && !isAccountOverviewLoading && !hasAccountOverviewError ? (
+          <div className="dashboard-overview__account">
+            <label className="dashboard-account-selector">
+              <span className="visually-hidden">Cuenta principal</span>
+              <select
+                aria-label="Cuenta principal"
+                onChange={(event) => handleAccountChange(event.target.value)}
+                value={selectedAccount.id}
+              >
+                {accounts.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.name}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown aria-hidden="true" size={17} strokeWidth={2.5} />
+            </label>
+          </div>
+        ) : null}
+
+        <div className="dashboard-overview__body">
+          <AccountBalanceOverview
+            accounts={accounts}
+            period={period}
+            selectedAccountId={selectedAccountId}
+            hasLoadError={hasAccountOverviewError}
+            isLoading={isAccountOverviewLoading}
+            movements={movements}
+            refunds={refunds}
+            transfers={transfers}
+          />
+
+          <div className="dashboard-actions__list">
+            <button
+              aria-haspopup="dialog"
+              className="button-primary dashboard-action"
+              onClick={() => setIsMovementFormOpen(true)}
+              type="button"
+            >
+              Nuevo movimiento
+            </button>
+            <Link className="dashboard-action" to="/accounts">
+              Transferir
+            </Link>
+          </div>
         </div>
-      </header>
-
-      <AccountBalanceOverview
-        accounts={accounts}
-        onAccountChange={handleAccountChange}
-        period={period}
-        selectedAccountId={selectedAccountId}
-        hasLoadError={hasAccountOverviewError}
-        isLoading={isAccountOverviewLoading}
-        movements={movements}
-        refunds={refunds}
-        transfers={transfers}
-      />
-
-      <div className="dashboard-actions__list">
-        <button
-          aria-haspopup="dialog"
-          className="button-primary dashboard-action"
-          onClick={() => setIsMovementFormOpen(true)}
-          type="button"
-        >
-          Nuevo movimiento
-        </button>
-        <Link className="dashboard-action" to="/accounts">
-          Transferir
-        </Link>
       </div>
 
       {loadFailed ? (
@@ -487,35 +502,10 @@ export function MovementList() {
         onDeleteRefund={handleDeleteRefund}
         onEditMovement={handleEditMovement}
         onRecordsChanged={refreshPeriodRecords}
-        period={period}
         refunds={refundsForAccount}
       />
-
-      <details className="dashboard-period" id="period-summary">
-        <summary>Resumen del período y categorías</summary>
-        <PeriodSummary
-          categories={categories}
-          movements={movements}
-          onPeriodChange={setPeriod}
-          period={period}
-          refunds={refunds}
-        />
-      </details>
     </main>
   );
-}
-
-function getStoredAccountId(ownerId: string, accounts: FinancialAccount[]): string {
-  let storedAccountId: string | null = null;
-  try {
-    storedAccountId = window.localStorage.getItem(`mave.selected-account.${ownerId}`);
-  } catch {
-    return accounts[0]?.id ?? '';
-  }
-
-  return accounts.some((account) => account.id === storedAccountId)
-    ? (storedAccountId ?? '')
-    : (accounts[0]?.id ?? '');
 }
 
 function applySyncResults(current: Movement[], results: SyncOutcome[]): Movement[] {

@@ -215,7 +215,7 @@ test('summarizes a month by currency and category and records partial refunds', 
     }
 
     if (url.pathname === '/rest/v1/financial_accounts' && request.method() === 'GET') {
-      await respond([{ id: accountId, name: 'Banco ARS', currency: 'ARS' }]);
+      await respond([{ id: accountId, name: 'Banco ARS', currency: 'ARS', archived_at: null }]);
       return;
     }
 
@@ -295,7 +295,12 @@ test('summarizes a month by currency and category and records partial refunds', 
     .getByRole('button', { name: 'Crear cuenta' })
     .click();
 
-  await page.getByText('Resumen del período y categorías', { exact: true }).click();
+  await page.getByRole('link', { name: 'Gestión', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Gestión financiera' })).toBeVisible();
+  const periodSummaryPanel = page.locator('#period-summary');
+  await expect(periodSummaryPanel).not.toHaveAttribute('open', '');
+  await periodSummaryPanel.locator('summary').click();
+  await expect(periodSummaryPanel).toHaveAttribute('open', '');
   const summary = page.getByRole('region', { name: 'Resumen del período' });
   const periodInput = summary.getByLabel('Período');
   await expect(periodInput).toHaveValue('2026-09');
@@ -314,44 +319,107 @@ test('summarizes a month by currency and category and records partial refunds', 
   await periodInput.fill('2026-09');
   await expect(summary.getByLabel('Gastos netos ARS')).toHaveText('ARS 300,00');
 
-  const history = page.getByRole('list', { name: 'Historial de movimientos' });
-  const arsExpense = history.getByRole('listitem').filter({ hasText: 'ARS 300,00' });
+  await page.getByRole('link', { name: 'Inicio', exact: true }).click();
+  await page.getByRole('button', { name: 'Ver todos los movimientos' }).click();
+  const fullHistory = page.getByRole('dialog', { name: 'Todos los movimientos' });
+  const arsExpense = fullHistory.locator('.movement-row').filter({ hasText: 'ARS 300,00' });
   await arsExpense.locator('details').first().locator('summary').click();
   await arsExpense.getByRole('button', { name: 'Registrar devolución' }).click();
   const refundForm = page.getByRole('form', { name: 'Registrar devolución' });
   await refundForm.getByLabel('Importe de devolución').fill('100.50');
   await refundForm.getByLabel('Fecha de recepción').fill('2026-09-20');
   await refundForm.getByRole('button', { name: 'Registrar devolución' }).click();
+  await fullHistory.getByRole('button', { name: 'Cerrar historial' }).click();
+
+  await page.getByRole('link', { name: 'Gestión', exact: true }).click();
+  await page.locator('#period-summary > summary').click();
   await expect(summary.getByLabel('Gastos netos ARS')).toHaveText('ARS 199,50');
   await expect(summary.getByLabel('Ingresos ARS')).toHaveText('ARS 1.000,00');
 
-  await arsExpense.getByRole('button', { name: 'Editar devolución' }).click();
+  await page.getByRole('link', { name: 'Inicio', exact: true }).click();
+  await page.getByRole('button', { name: 'Ver todos los movimientos' }).click();
+  const editHistory = page.getByRole('dialog', { name: 'Todos los movimientos' });
+  const editableArsExpense = editHistory.locator('.movement-row').filter({ hasText: 'ARS 300,00' });
+  await editableArsExpense.locator('details').first().locator('summary').click();
+  await editableArsExpense.getByRole('button', { name: 'Editar devolución' }).click();
   const editRefundForm = page.getByRole('form', { name: 'Editar devolución' });
   await editRefundForm.getByLabel('Importe de devolución').fill('125.25');
   await editRefundForm.getByLabel('Fecha de recepción').fill('2026-09-21');
   await editRefundForm.getByRole('button', { name: 'Guardar devolución' }).click();
+  await editHistory.getByRole('button', { name: 'Cerrar historial' }).click();
+
+  await page.getByRole('link', { name: 'Gestión', exact: true }).click();
+  await page.locator('#period-summary > summary').click();
   await expect(summary.getByLabel('Gastos netos ARS')).toHaveText('ARS 174,75');
 
+  await page.getByRole('link', { name: 'Inicio', exact: true }).click();
+  await page.getByRole('button', { name: 'Ver todos los movimientos' }).click();
+  const deleteHistory = page.getByRole('dialog', { name: 'Todos los movimientos' });
+  const refundableExpense = deleteHistory.locator('.movement-row').filter({
+    hasText: 'ARS 300,00',
+  });
+  await refundableExpense.locator('details').first().locator('summary').click();
   page.on('dialog', (dialog) => dialog.accept());
-  await arsExpense.getByRole('button', { name: 'Eliminar devolución' }).click();
+  await refundableExpense.getByRole('button', { name: 'Eliminar devolución' }).click();
+  await deleteHistory.getByRole('button', { name: 'Cerrar historial' }).click();
+
+  await page.getByRole('link', { name: 'Gestión', exact: true }).click();
+  await page.locator('#period-summary > summary').click();
   await expect(summary.getByLabel('Gastos netos ARS')).toHaveText('ARS 300,00');
 
-  await periodInput.fill('2026-07');
-  const julyHistory = page.getByRole('list', { name: 'Historial de movimientos' });
-  const julyExpense = julyHistory.getByRole('listitem').filter({ hasText: 'ARS 40,00' });
+  await page.getByRole('link', { name: 'Inicio', exact: true }).click();
+  await page.getByRole('button', { name: 'Ver todos los movimientos' }).click();
+  const julyHistory = page.getByRole('dialog', { name: 'Todos los movimientos' });
+  const julyExpense = julyHistory.locator('.movement-row').filter({ hasText: 'ARS 40,00' });
   await julyExpense.locator('details').first().locator('summary').click();
   await julyExpense.getByRole('button', { name: 'Registrar devolución' }).click();
   const julyRefundForm = page.getByRole('form', { name: 'Registrar devolución' });
   await julyRefundForm.getByLabel('Importe de devolución').fill('40.00');
   await julyRefundForm.getByLabel('Fecha de recepción').fill('2026-08-05');
   await julyRefundForm.getByRole('button', { name: 'Registrar devolución' }).click();
+  await julyHistory.getByRole('button', { name: 'Cerrar historial' }).click();
 
+  await page.getByRole('link', { name: 'Gestión', exact: true }).click();
+  await page.locator('#period-summary > summary').click();
   await periodInput.fill('2026-08');
   await expect(summary.getByLabel('Gastos netos ARS')).toHaveText('ARS -40,00');
-  await expect(page.getByRole('list', { name: 'Historial de movimientos' })).toContainText(
-    'Gasto original 30/07/2026',
+  await page.getByRole('link', { name: 'Inicio', exact: true }).click();
+  await page.getByRole('button', { name: 'Ver todos los movimientos' }).click();
+  const groupedHistory = page.getByRole('dialog', { name: 'Todos los movimientos' });
+  const julyDay = groupedHistory.locator('.movement-history-day').filter({
+    hasText: '30 de julio de 2026',
+  });
+  await expect(julyDay.locator('h3 time')).toHaveAttribute('datetime', '2026-07-30');
+  const refundedJulyExpense = julyDay.locator('.movement-row').filter({ hasText: 'ARS 40,00' });
+  await refundedJulyExpense.locator('details').first().locator('summary').click();
+  await expect(refundedJulyExpense).toContainText('05/08/2026');
+  await groupedHistory.getByRole('button', { name: 'Cerrar historial' }).click();
+
+  await page.getByRole('link', { name: 'Gestión', exact: true }).click();
+  await page.getByRole('link', { name: 'Estadísticas', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Estadísticas' })).toBeVisible();
+  const statisticsPeriod = page.getByLabel('Elegir mes');
+  await expect(statisticsPeriod).toHaveValue('2026-09');
+  await expect(page.getByLabel('Ingresos ARS')).toHaveText('ARS 1.000,00');
+  await expect(page.getByLabel('Gastos netos ARS')).toHaveText('ARS 300,00');
+  await expect(
+    page.getByRole('list', { name: 'Categorías ordenadas por gasto neto' }),
+  ).toContainText('Alimentación');
+  await expect(
+    page.getByRole('img', {
+      name: 'Importes diarios de ingresos, gastos y devoluciones en septiembre de 2026, ARS',
+    }),
+  ).toBeVisible();
+
+  await page.getByRole('button', { name: 'USD', exact: true }).click();
+  await expect(page.getByLabel('Ingresos USD')).toHaveText('USD 10,00');
+  await expect(page.getByLabel('Gastos netos USD')).toHaveText('USD 3,00');
+  await expect(page.getByRole('button', { name: 'USD', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
   );
-  await expect(page.getByRole('list', { name: 'Historial de movimientos' })).toContainText(
-    '05/08/2026',
-  );
+
+  await statisticsPeriod.fill('2026-08');
+  await expect(statisticsPeriod).toHaveValue('2026-08');
+  await expect(page.getByLabel('Devoluciones USD')).toHaveText('USD 0,00');
 });

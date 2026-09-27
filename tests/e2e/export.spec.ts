@@ -273,7 +273,9 @@ test('downloads relational CSV and JSON exports without another owner data', asy
   await signUp(page);
 
   await page.goto('/settings');
-  await expect(page.getByRole('heading', { name: 'Mi perfil' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Configuración' })).toBeVisible();
+  await page.getByRole('link', { name: /Tus datos/ }).click();
+  await expect(page.getByRole('heading', { name: 'Tus datos' })).toBeVisible();
   await page.getByRole('button', { name: 'Exportar datos' }).click();
   const dialog = page.getByRole('dialog', { name: 'Exportar tus datos' });
   await expect(dialog).toBeVisible();

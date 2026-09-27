@@ -4,10 +4,11 @@ import { App } from './App';
 import { FeedbackMessage } from './components/FeedbackMessage';
 
 describe('App', () => {
-  it('renders the application heading', () => {
+  it('keeps the app header visible while checking the session', () => {
     render(<App />);
 
-    expect(screen.getByRole('heading', { name: 'Mave' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Mave, inicio' })).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: 'Comprobando la sesión' })).toBeInTheDocument();
   });
 
   it('announces errors as alerts', () => {

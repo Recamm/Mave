@@ -40,7 +40,10 @@ export type Movement = Pick<
 export type MovementSyncStatus =
   'synced' | 'pending' | 'sending' | 'retry' | 'conflict' | 'blocked';
 
-export type FinancialAccountOption = Pick<FinancialAccountRow, 'currency' | 'id' | 'name'>;
+export type FinancialAccountOption = Pick<
+  FinancialAccountRow,
+  'archived_at' | 'currency' | 'id' | 'name'
+>;
 
 type MovementClient = NonNullable<ReturnType<typeof getSupabaseClient>>;
 type MovementClientProvider = () => MovementClient | null;
@@ -69,7 +72,7 @@ export function createMovementService(clientProvider: MovementClientProvider = g
     async listFinancialAccounts(): Promise<FinancialAccountOption[]> {
       const { data, error } = await requireClient()
         .from('financial_accounts')
-        .select('id,name,currency')
+        .select('id,name,currency,archived_at')
         .order('name', { ascending: true });
 
       if (error) {

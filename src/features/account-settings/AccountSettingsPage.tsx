@@ -1,46 +1,75 @@
-import { useEffect, useState } from 'react';
+import { useState, type ReactNode } from 'react';
+import { ArrowLeft, ChevronRight, Database, Palette, UserRound } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { AppIconSettings } from '../../app/components/AppIconSettings';
+import { AppearanceSettings } from '../../app/components/AppearanceSettings';
 import { FeedbackMessage } from '../../app/components/FeedbackMessage';
 import { MobileNavigationSettings } from '../../app/components/MobileNavigationSettings';
 import { MovementTypeDisplaySettings } from '../../app/components/MovementTypeDisplaySettings';
 import { useAuthSession } from '../../app/useAuthSession';
-import { signOutWithPendingWarning } from '../auth/logoutService';
-import { CategoryManager } from '../categories/CategoryManager';
-import { categoryService, type Category } from '../categories/categoryService';
-import { readOwnerLookups, writeOwnerLookups } from '../sync/ownerLookupCache';
 import { ExportDialog } from '../data-export/ExportDialog';
-import { AppearanceSettings } from '../../app/components/AppearanceSettings';
+import { signOutWithPendingWarning } from '../auth/logoutService';
+import { AccountAccessSettings } from './AccountAccessSettings';
 import { DeletionSettings } from './DeletionSettings';
 
 export function AccountSettingsPage() {
+  const [searchParams] = useSearchParams();
+  const section = searchParams.get('section');
+
+  if (section === 'account') {
+    return <AccountSettingsAccountPage />;
+  }
+
+  if (section === 'appearance') {
+    return <AccountSettingsAppearancePage />;
+  }
+
+  if (section === 'data') {
+    return <AccountSettingsDataPage />;
+  }
+
+  return (
+    <SettingsPageLayout title="Configuración">
+      <nav aria-label="Secciones de configuración" className="settings-directory">
+        <Link className="settings-directory__item" to="/profile?section=account">
+          <span aria-hidden="true" className="settings-directory__icon">
+            <UserRound size={20} />
+          </span>
+          <span className="settings-directory__copy">
+            <strong>Cuenta</strong>
+            <span>Correo, contraseña y sesión</span>
+          </span>
+          <ChevronRight aria-hidden="true" className="settings-directory__arrow" size={19} />
+        </Link>
+        <Link className="settings-directory__item" to="/profile?section=appearance">
+          <span aria-hidden="true" className="settings-directory__icon">
+            <Palette size={20} />
+          </span>
+          <span className="settings-directory__copy">
+            <strong>Apariencia</strong>
+            <span>Tema, icono y navegación</span>
+          </span>
+          <ChevronRight aria-hidden="true" className="settings-directory__arrow" size={19} />
+        </Link>
+        <Link className="settings-directory__item" to="/profile?section=data">
+          <span aria-hidden="true" className="settings-directory__icon">
+            <Database size={20} />
+          </span>
+          <span className="settings-directory__copy">
+            <strong>Tus datos</strong>
+            <span>Exportar cuentas y movimientos</span>
+          </span>
+          <ChevronRight aria-hidden="true" className="settings-directory__arrow" size={19} />
+        </Link>
+      </nav>
+    </SettingsPageLayout>
+  );
+}
+
+export function AccountSettingsAccountPage() {
   const { session } = useAuthSession();
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
-  const [categoriesLoadFailed, setCategoriesLoadFailed] = useState(false);
   const [signOutFailed, setSignOutFailed] = useState(false);
-
-  useEffect(() => {
-    let isCurrent = true;
-
-    async function loadCategories() {
-      try {
-        const loadedCategories = await categoryService.listCategories();
-        if (isCurrent) {
-          setCategories(loadedCategories);
-          setCategoriesLoadFailed(false);
-        }
-      } catch {
-        if (isCurrent) {
-          setCategoriesLoadFailed(true);
-        }
-      }
-    }
-
-    void loadCategories();
-    return () => {
-      isCurrent = false;
-    };
-  }, []);
+  const accountEmail = session?.user.email;
 
   async function handleSignOut() {
     if (!session?.user.id) {
@@ -54,80 +83,116 @@ export function AccountSettingsPage() {
     }
   }
 
-  async function refreshCategories() {
-    const updatedCategories = await categoryService.listCategories();
-    setCategories(updatedCategories);
-    setCategoriesLoadFailed(false);
-    if (session?.user.id) {
-      const cachedLookups = readOwnerLookups(session.user.id);
-      if (cachedLookups) {
-        writeOwnerLookups(session.user.id, {
-          ...cachedLookups,
-          categories: updatedCategories,
-        });
-      }
-    }
-  }
+  return (
+    <SettingsSectionPage title="Cuenta">
+      <section aria-labelledby="settings-access-title" className="settings-section">
+        <div className="settings-section__heading">
+          <h2 id="settings-access-title">Acceso</h2>
+        </div>
+        <div className="settings-section__content">
+          <div className="settings-account">
+            <p>{accountEmail ?? 'Sesión activa'}</p>
+          </div>
+          {accountEmail ? <AccountAccessSettings currentEmail={accountEmail} /> : null}
+        </div>
+      </section>
 
+      <section aria-labelledby="settings-session-title" className="settings-section">
+        <div className="settings-section__heading">
+          <h2 id="settings-session-title">Sesión</h2>
+        </div>
+        <div className="settings-section__content">
+          <button className="settings-sign-out" onClick={() => void handleSignOut()} type="button">
+            Cerrar sesión
+          </button>
+          {signOutFailed ? (
+            <FeedbackMessage tone="error">
+              No se pudo cerrar la sesión. Inténtalo de nuevo.
+            </FeedbackMessage>
+          ) : null}
+        </div>
+      </section>
+
+      <section
+        aria-labelledby="settings-delete-title"
+        className="settings-section settings-section--danger"
+      >
+        <div className="settings-section__heading">
+          <h2 id="settings-delete-title">Eliminar cuenta</h2>
+        </div>
+        <div className="settings-section__content">
+          <DeletionSettings />
+        </div>
+      </section>
+    </SettingsSectionPage>
+  );
+}
+
+export function AccountSettingsAppearancePage() {
+  return (
+    <SettingsSectionPage title="Apariencia">
+      <section aria-labelledby="settings-appearance-title" className="settings-section">
+        <div className="settings-section__heading">
+          <h2 id="settings-appearance-title">Visualización</h2>
+        </div>
+        <div className="settings-section__content">
+          <AppearanceSettings />
+          <AppIconSettings />
+          <MobileNavigationSettings />
+          <MovementTypeDisplaySettings />
+        </div>
+      </section>
+    </SettingsSectionPage>
+  );
+}
+
+export function AccountSettingsDataPage() {
+  return (
+    <SettingsSectionPage title="Tus datos">
+      <section aria-labelledby="settings-data-title" className="settings-section">
+        <div className="settings-section__heading">
+          <h2 id="settings-data-title">Exportación</h2>
+        </div>
+        <div className="settings-section__content">
+          <ExportDialog />
+        </div>
+      </section>
+    </SettingsSectionPage>
+  );
+}
+
+function SettingsSectionPage({ children, title }: { children: ReactNode; title: string }) {
+  return (
+    <SettingsPageLayout showBackLink title={title}>
+      {children}
+    </SettingsPageLayout>
+  );
+}
+
+function SettingsPageLayout({
+  children,
+  showBackLink = false,
+  title,
+}: {
+  children: ReactNode;
+  showBackLink?: boolean;
+  title: string;
+}) {
   return (
     <main className="movement-page account-settings-page">
+      {showBackLink ? (
+        <Link className="settings-back-link" to="/profile">
+          <ArrowLeft aria-hidden="true" size={17} />
+          <span>Volver a configuración</span>
+        </Link>
+      ) : null}
       <header className="movement-page__header">
         <div>
           <p className="eyebrow">Tu espacio personal</p>
-          <h1>Mi perfil</h1>
+          <h1>{title}</h1>
         </div>
       </header>
-
-      <section aria-labelledby="profile-details-title" className="profile-section">
-        <h2 id="profile-details-title">Cuenta</h2>
-        <p>{session?.user.email ?? 'Sesión activa'}</p>
-        <button onClick={() => void handleSignOut()} type="button">
-          Cerrar sesión
-        </button>
-        {signOutFailed ? (
-          <FeedbackMessage tone="error">
-            No se pudo cerrar la sesión. Inténtalo de nuevo.
-          </FeedbackMessage>
-        ) : null}
-      </section>
-
-      <section aria-label="Preferencias">
-        <AppIconSettings />
-        <AppearanceSettings />
-        <MobileNavigationSettings />
-        <MovementTypeDisplaySettings />
-      </section>
-
-      <section aria-labelledby="profile-categories-title" className="profile-section">
-        <h2 id="profile-categories-title">Categorías</h2>
-        <button
-          aria-expanded={isCategoryManagerOpen}
-          onClick={() => setIsCategoryManagerOpen((open) => !open)}
-          type="button"
-        >
-          {isCategoryManagerOpen ? 'Ocultar categorías' : 'Gestionar categorías'}
-        </button>
-        {categoriesLoadFailed ? (
-          <FeedbackMessage tone="error">No se pudieron cargar las categorías.</FeedbackMessage>
-        ) : null}
-        {isCategoryManagerOpen ? (
-          <CategoryManager
-            categories={categories}
-            onCategoriesChanged={refreshCategories}
-            onClose={() => setIsCategoryManagerOpen(false)}
-          />
-        ) : null}
-      </section>
-
-      <section aria-labelledby="data-export-section" className="account-settings-section">
-        <h2 id="data-export-section">Exportación</h2>
-        <ExportDialog />
-      </section>
-
-      <section aria-labelledby="account-deletion-section" className="account-settings-section">
-        <h2 id="account-deletion-section">Eliminación de cuenta</h2>
-        <DeletionSettings />
-      </section>
+      {children}
     </main>
   );
 }

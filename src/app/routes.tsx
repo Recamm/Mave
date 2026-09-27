@@ -1,14 +1,15 @@
 import { Link, NavLink, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
 import { useAuthSession } from './useAuthSession';
 import { FeedbackMessage } from './components/FeedbackMessage';
+import { LoadingIndicator } from './components/LoadingIndicator';
 import { getAppErrorMessage } from '../lib/errors';
 import { AuthPage } from '../features/auth/AuthPage';
 import { MovementList } from '../features/movements/MovementList';
 import { AccountsPage } from '../features/accounts/AccountsPage';
-import { GoalsPage } from '../features/goals/GoalsPage';
 import { AccountSettingsPage } from '../features/account-settings/AccountSettingsPage';
+import { StatisticsPage } from '../features/summaries/StatisticsPage';
 import brandLogo from '../../info/finanzas-pwa/assets/brand/logo.svg';
-import { House, Landmark, Target, UserRound } from 'lucide-react';
+import { Activity, House, Landmark, Settings } from 'lucide-react';
 
 export function AppRoutes() {
   return (
@@ -16,7 +17,8 @@ export function AppRoutes() {
       <Route element={<SessionRoute />}>
         <Route path="/" element={<MovementList />} />
         <Route path="/accounts" element={<AccountsPage />} />
-        <Route path="/goals" element={<GoalsPage />} />
+        <Route path="/statistics" element={<StatisticsPage />} />
+        <Route path="/goals" element={<Navigate replace to="/accounts#savings-goals" />} />
         <Route path="/profile" element={<AccountSettingsPage />} />
         <Route path="/settings" element={<Navigate replace to="/profile" />} />
       </Route>
@@ -27,6 +29,11 @@ export function AppRoutes() {
 
 function SessionRoute() {
   const { errorCode, session, status } = useAuthSession();
+  const { pathname } = useLocation();
+
+  if (status === 'loading') {
+    return <SessionLoading isHome={pathname === '/'} />;
+  }
 
   if (status === 'unauthenticated') {
     return <AuthPage />;
@@ -39,14 +46,23 @@ function SessionRoute() {
   return (
     <main>
       <h1>Mave</h1>
-      {status === 'loading' ? (
-        <FeedbackMessage tone="info">Comprobando la sesión.</FeedbackMessage>
-      ) : (
-        <FeedbackMessage tone="error">
-          {getAppErrorMessage(errorCode ?? 'session-unavailable')}
-        </FeedbackMessage>
-      )}
+      <FeedbackMessage tone="error">
+        {getAppErrorMessage(errorCode ?? 'session-unavailable')}
+      </FeedbackMessage>
     </main>
+  );
+}
+
+function SessionLoading({ isHome }: { isHome: boolean }) {
+  return (
+    <div aria-busy="true" className="authenticated-home session-loading">
+      <header className={isHome ? 'session-strip session-strip--home' : 'session-strip'}>
+        <SessionBrand />
+      </header>
+      <main className="session-loading__indicator">
+        <LoadingIndicator label="Comprobando la sesión" />
+      </main>
+    </div>
   );
 }
 
@@ -59,17 +75,14 @@ function AuthenticatedHome() {
         Ir al contenido
       </a>
       <header className={pathname === '/' ? 'session-strip session-strip--home' : 'session-strip'}>
-        <Link aria-label="Mave, inicio" className="session-brand" to="/">
-          <img alt="" src={brandLogo} />
-          <span>Mave</span>
-        </Link>
+        <SessionBrand />
         <nav aria-label="Navegación principal" className="session-navigation">
           <NavLink end to="/">
             Inicio
           </NavLink>
-          <NavLink to="/accounts">Cuentas</NavLink>
-          <NavLink to="/goals">Metas</NavLink>
-          <NavLink to="/profile">Perfil</NavLink>
+          <NavLink to="/accounts">Gestión</NavLink>
+          <NavLink to="/statistics">Estadísticas</NavLink>
+          <NavLink to="/profile">Configuración</NavLink>
         </nav>
       </header>
       <div id="main-content" tabIndex={-1}>
@@ -82,18 +95,27 @@ function AuthenticatedHome() {
         </NavLink>
         <NavLink to="/accounts">
           <Landmark aria-hidden="true" size={20} />
-          <span>Cuentas</span>
+          <span>Gestión</span>
         </NavLink>
-        <NavLink to="/goals">
-          <Target aria-hidden="true" size={20} />
-          <span>Metas</span>
+        <NavLink to="/statistics">
+          <Activity aria-hidden="true" size={20} />
+          <span>Estadísticas</span>
         </NavLink>
         <NavLink to="/profile">
-          <UserRound aria-hidden="true" size={20} />
-          <span>Perfil</span>
+          <Settings aria-hidden="true" size={20} />
+          <span>Ajustes</span>
         </NavLink>
       </nav>
     </div>
+  );
+}
+
+function SessionBrand() {
+  return (
+    <Link aria-label="Mave, inicio" className="session-brand" to="/">
+      <img alt="" src={brandLogo} />
+      <span>Mave</span>
+    </Link>
   );
 }
 

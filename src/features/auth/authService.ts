@@ -5,7 +5,7 @@ import type { Database } from '../../lib/supabase/database.types';
 export type AuthServiceErrorCode = 'offline' | 'configuration' | 'request';
 
 const errorMessages: Record<AuthServiceErrorCode, string> = {
-  offline: 'Necesitas conexión a Internet para crear una cuenta.',
+  offline: 'Necesitas conexión a Internet para completar esta acción.',
   configuration: 'No se pudo configurar la conexión con el servicio.',
   request: 'No se pudo completar la solicitud. Revisa tus datos e inténtalo de nuevo.',
 };
@@ -68,6 +68,35 @@ export function createAuthService(
       const { error } = await requireClient().auth.resetPasswordForEmail(email.trim(), {
         redirectTo,
       });
+
+      if (error) {
+        throw new AuthServiceError('request');
+      }
+    },
+
+    async updateEmail(email: string): Promise<void> {
+      if (!isOnline()) {
+        throw new AuthServiceError('offline');
+      }
+
+      const emailRedirectTo =
+        typeof window === 'undefined' ? {} : { emailRedirectTo: window.location.origin };
+      const { error } = await requireClient().auth.updateUser(
+        { email: email.trim() },
+        emailRedirectTo,
+      );
+
+      if (error) {
+        throw new AuthServiceError('request');
+      }
+    },
+
+    async updatePassword(password: string): Promise<void> {
+      if (!isOnline()) {
+        throw new AuthServiceError('offline');
+      }
+
+      const { error } = await requireClient().auth.updateUser({ password });
 
       if (error) {
         throw new AuthServiceError('request');
