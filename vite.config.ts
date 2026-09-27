@@ -37,6 +37,6 @@ function serviceWorkerPlugin(): Plugin {
 }
 
 export default defineConfig({
-  base: './',
+  base: '/',
   plugins: [react(), serviceWorkerPlugin()],
 });

@@ -13,15 +13,24 @@ const mockAuthState = vi.hoisted(() => ({
 
 const mockWebLogin = vi.hoisted(() => ({
   approve: vi.fn(),
+  approveCode: vi.fn(),
   inspect: vi.fn(),
+  listPendingCodeApprovals: vi.fn().mockResolvedValue([]),
   poll: vi.fn(),
+  rejectCode: vi.fn(),
+  registerPushSubscription: vi.fn(),
+  removePushSubscription: vi.fn(),
   start: vi.fn(),
+  startCode: vi.fn(),
 }));
 
 vi.mock('./useAuthSession', () => ({
   useAuthSession: () => mockAuthState,
 }));
-vi.mock('../features/auth/webLoginService', () => ({ webLoginService: mockWebLogin }));
+vi.mock('../features/auth/webLoginService', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../features/auth/webLoginService')>()),
+  webLoginService: mockWebLogin,
+}));
 
 import { AppPinAccessProvider } from './AppPinAccessProvider';
 import { AppRoutes } from './routes';
@@ -48,6 +57,7 @@ function LocationProbe() {
 
 afterEach(() => {
   cleanup();
+  mockWebLogin.listPendingCodeApprovals.mockResolvedValue([]);
   mockAuthState.status = 'authenticated';
   mockAuthState.session = { user: { email: 'person@example.invalid', id: 'user-a' } };
   appPinService.clearPin('user-a');
@@ -91,6 +101,36 @@ describe('authenticated app PIN gate', () => {
       expect(screen.getByTestId('current-location')).toHaveTextContent('/login/approve');
       expect(screen.getByTestId('current-location')).not.toHaveTextContent('approval=');
     });
+  });
+
+  it('opens the approval route when a valid manual code is submitted from Security settings', async () => {
+    const user = userEvent.setup();
+    mockWebLogin.inspect.mockResolvedValue({
+      clientLabel: 'desktop.example.invalid',
+      status: 'pending',
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/profile?section=security']}>
+        <AppPinAccessProvider>
+          <AppRoutes />
+        </AppPinAccessProvider>
+      </MemoryRouter>,
+    );
+
+    await user.type(
+      screen.getByLabelText('Código manual'),
+      'c22e553d-87b3-44c4-9c0d-0137c8881111:' + 'a'.repeat(64),
+    );
+    await user.click(screen.getByRole('button', { name: 'Continuar' }));
+
+    expect(
+      await screen.findByRole('heading', { name: 'Autorizar inicio en PC' }),
+    ).toBeInTheDocument();
+    expect(mockWebLogin.inspect).toHaveBeenCalledWith(
+      'c22e553d-87b3-44c4-9c0d-0137c8881111',
+      'a'.repeat(64),
+    );
   });
 
   it('shows the recommended setting only while signed in and can enable or disable it', async () => {

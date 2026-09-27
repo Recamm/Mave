@@ -7,10 +7,35 @@ interface ServiceWorkerFetchEvent extends ServiceWorkerLifecycleEvent {
   respondWith(response: Promise<Response> | Response): void;
 }
 
+interface ServiceWorkerWindowClient {
+  focus(): Promise<ServiceWorkerWindowClient>;
+  navigate?(url: string): Promise<ServiceWorkerWindowClient | null>;
+  postMessage(message: unknown): void;
+  url: string;
+}
+
 interface ServiceWorkerRuntime extends EventTarget {
-  clients: { claim(): Promise<void> };
-  registration: { scope: string };
+  clients: {
+    claim(): Promise<void>;
+    matchAll(options: {
+      includeUncontrolled: boolean;
+      type: 'window';
+    }): Promise<ServiceWorkerWindowClient[]>;
+    openWindow(url: string): Promise<ServiceWorkerWindowClient | null>;
+  };
+  registration: {
+    scope: string;
+    showNotification(title: string, options: NotificationOptions): Promise<void>;
+  };
   skipWaiting(): Promise<void>;
+}
+
+interface ServiceWorkerPushEvent extends ServiceWorkerLifecycleEvent {
+  data: { json(): unknown } | null;
+}
+
+interface ServiceWorkerNotificationClickEvent extends ServiceWorkerLifecycleEvent {
+  notification: { close(): void };
 }
 
 const worker = self as unknown as ServiceWorkerRuntime;
@@ -19,6 +44,7 @@ const appScope = worker.registration.scope;
 const appShellUrl = new URL('./', appScope).toString();
 const staticAssetPath = new URL('assets/', appScope).pathname;
 const iconAssetPath = new URL('icons/', appScope).pathname;
+const approvalInboxUrl = new URL('?webLoginApproval=1', appScope).toString();
 
 worker.addEventListener('install', (event) => {
   (event as ServiceWorkerLifecycleEvent).waitUntil(
@@ -49,6 +75,61 @@ worker.addEventListener('activate', (event) => {
           .map((name) => caches.delete(name)),
       );
       await worker.clients.claim();
+    })(),
+  );
+});
+
+worker.addEventListener('push', (event) => {
+  (event as ServiceWorkerPushEvent).waitUntil(
+    (async () => {
+      const pushEvent = event as ServiceWorkerPushEvent;
+      let payload: unknown;
+      try {
+        payload = pushEvent.data?.json();
+      } catch {
+        return;
+      }
+      if (!isWebLoginPush(payload)) {
+        return;
+      }
+
+      const clients = await worker.clients.matchAll({ includeUncontrolled: true, type: 'window' });
+      const appClients = clients.filter(isAppClient);
+      if (appClients.length > 0) {
+        for (const client of appClients) {
+          client.postMessage({ requestId: payload.requestId, type: 'web-login-code-pending' });
+        }
+        return;
+      }
+
+      await worker.registration.showNotification('Solicitud de inicio de sesión', {
+        body: 'Hay un intento de acceso. Abre Mave para revisar y autorizar la solicitud.',
+        data: { url: approvalInboxUrl },
+        icon: new URL('icons/icon-192.png', appScope).toString(),
+        tag: 'web-login-code',
+      });
+    })(),
+  );
+});
+
+worker.addEventListener('notificationclick', (event) => {
+  const clickEvent = event as ServiceWorkerNotificationClickEvent;
+  clickEvent.notification.close();
+  clickEvent.waitUntil(
+    (async () => {
+      const clients = await worker.clients.matchAll({ includeUncontrolled: true, type: 'window' });
+      const appClient = clients.find(isAppClient);
+      if (appClient) {
+        try {
+          await appClient.navigate?.(approvalInboxUrl);
+        } catch {
+          appClient.postMessage({ type: 'web-login-code-pending' });
+        }
+        await appClient.focus();
+        return;
+      }
+
+      await worker.clients.openWindow(approvalInboxUrl);
     })(),
   );
 });
@@ -100,3 +181,27 @@ worker.addEventListener('fetch', (event) => {
     })(),
   );
 });
+
+function isWebLoginPush(value: unknown): value is { requestId: string; type: 'web-login-code' } {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false;
+  }
+  const payload = value as Record<string, unknown>;
+  return (
+    payload.type === 'web-login-code' &&
+    typeof payload.requestId === 'string' &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      payload.requestId,
+    )
+  );
+}
+
+function isAppClient(client: ServiceWorkerWindowClient): boolean {
+  try {
+    const clientUrl = new URL(client.url);
+    const scopeUrl = new URL(appScope);
+    return clientUrl.origin === scopeUrl.origin && clientUrl.pathname.startsWith(scopeUrl.pathname);
+  } catch {
+    return false;
+  }
+}

@@ -1,17 +1,19 @@
 import { useEffect, useState } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { Check, Copy, RefreshCw } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { FeedbackMessage } from '../../app/components/FeedbackMessage';
 import { LoadingIndicator } from '../../app/components/LoadingIndicator';
 import { webLoginService, type WebLoginRequest } from './webLoginService';
 
 type QrPanelState = 'starting' | 'pending' | 'expired' | 'failed' | 'complete';
+type ManualCodeCopyState = 'idle' | 'copied' | 'failed';
 
 export function WebLoginQrPanel() {
   const [attempt, setAttempt] = useState(0);
   const [request, setRequest] = useState<WebLoginRequest | null>(null);
   const [state, setState] = useState<QrPanelState>('starting');
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
+  const [manualCodeCopyState, setManualCodeCopyState] = useState<ManualCodeCopyState>('idle');
 
   useEffect(() => {
     let isActive = true;
@@ -107,6 +109,20 @@ export function WebLoginQrPanel() {
   }, [request, state]);
 
   const approvalUrl = request ? createApprovalUrl(request) : null;
+  const manualCode = request ? `${request.requestId}:${request.approvalSecret}` : null;
+
+  async function copyManualCode() {
+    if (!manualCode) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(manualCode);
+      setManualCodeCopyState('copied');
+    } catch {
+      setManualCodeCopyState('failed');
+    }
+  }
 
   return (
     <section aria-labelledby="auth-qr-title" className="auth-qr">
@@ -123,6 +139,35 @@ export function WebLoginQrPanel() {
           title="Código QR para iniciar sesión en Mave"
           value={approvalUrl}
         />
+      ) : null}
+      {state === 'pending' && manualCode ? (
+        <div className="auth-qr__manual">
+          <div className="auth-qr__manual-heading">
+            <strong>¿No funciona la cámara?</strong>
+            <span>Pega este código en Configuración → Seguridad del celular.</span>
+          </div>
+          <div className="auth-qr__manual-value">
+            <code>{manualCode}</code>
+            <button
+              aria-label="Copiar código manual"
+              className="auth-qr__copy-button"
+              onClick={() => void copyManualCode()}
+              type="button"
+            >
+              {manualCodeCopyState === 'copied' ? (
+                <Check aria-hidden="true" size={17} />
+              ) : (
+                <Copy aria-hidden="true" size={17} />
+              )}
+              <span>{manualCodeCopyState === 'copied' ? 'Copiado' : 'Copiar'}</span>
+            </button>
+          </div>
+          {manualCodeCopyState === 'failed' ? (
+            <p className="auth-qr__manual-feedback">
+              No se pudo copiar. Selecciona el código y cópialo manualmente.
+            </p>
+          ) : null}
+        </div>
       ) : null}
       {state === 'pending' ? (
         <p className="auth-qr__copy">

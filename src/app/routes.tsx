@@ -17,6 +17,7 @@ import { AuthPage } from '../features/auth/AuthPage';
 import { AppPinLockScreen } from '../features/auth/AppPinLockScreen';
 import { appPinService } from '../features/auth/appPinService';
 import { WebLoginApprovalPage } from '../features/auth/WebLoginApprovalPage';
+import { WebLoginCodeApprovalInbox } from '../features/auth/WebLoginCodeApprovalInbox';
 import { MovementList } from '../features/movements/MovementList';
 import { AccountsPage } from '../features/accounts/AccountsPage';
 import { AccountSettingsPage } from '../features/account-settings/AccountSettingsPage';
@@ -188,6 +189,7 @@ function AuthenticatedHome() {
       <div id="main-content" tabIndex={-1}>
         <Outlet />
       </div>
+      <WebLoginCodeApprovalInbox />
       <nav aria-label="Navegación móvil" className="mobile-navigation">
         <NavLink end to="/">
           <House aria-hidden="true" size={20} />

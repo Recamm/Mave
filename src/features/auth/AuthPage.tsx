@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { FeedbackMessage } from '../../app/components/FeedbackMessage';
 import { AuthServiceError, authService } from './authService';
+import { WebLoginCodePanel } from './WebLoginCodePanel';
 import { WebLoginQrPanel } from './WebLoginQrPanel';
 import brandLogo from '../../../info/finanzas-pwa/assets/brand/logo.svg';
 
@@ -15,6 +16,7 @@ const modeTitles: Record<AuthMode, string> = {
 
 export function AuthPage({ showQrLogin = true }: { showQrLogin?: boolean } = {}) {
   const [mode, setMode] = useState<AuthMode>('sign-in');
+  const [loginMethod, setLoginMethod] = useState<'password' | 'code'>('password');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [feedback, setFeedback] = useState<{ message: string; tone: 'error' | 'info' } | null>(
@@ -112,8 +114,29 @@ export function AuthPage({ showQrLogin = true }: { showQrLogin?: boolean } = {})
           ) : null}
         </div>
 
+        {mode === 'sign-in' ? (
+          <div aria-label="Método de acceso" className="auth-login-methods" role="group">
+            <button
+              aria-pressed={loginMethod === 'password'}
+              onClick={() => setLoginMethod('password')}
+              type="button"
+            >
+              Contraseña
+            </button>
+            <button
+              aria-pressed={loginMethod === 'code'}
+              onClick={() => setLoginMethod('code')}
+              type="button"
+            >
+              Código de 6 dígitos
+            </button>
+          </div>
+        ) : null}
+
         {mode === 'qr' ? (
           <WebLoginQrPanel />
+        ) : mode === 'sign-in' && loginMethod === 'code' ? (
+          <WebLoginCodePanel email={email} onEmailChange={setEmail} />
         ) : (
           <form aria-label={title} onSubmit={handleSubmit}>
             <h2>{title}</h2>

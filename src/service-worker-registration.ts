@@ -3,7 +3,7 @@ export function registerServiceWorker(): void {
     return;
   }
 
-  const appBase = new URL('.', document.baseURI);
+  const appBase = new URL(import.meta.env.BASE_URL, document.baseURI);
   const scriptUrl = new URL('service-worker.js', appBase);
 
   void navigator.serviceWorker
