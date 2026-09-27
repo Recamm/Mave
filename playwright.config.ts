@@ -1,6 +1,13 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const isCI = Boolean(process.env.CI);
+const playwrightPort = Number(process.env.PLAYWRIGHT_PORT ?? 4173);
+
+if (!Number.isInteger(playwrightPort) || playwrightPort < 1 || playwrightPort > 65535) {
+  throw new Error('PLAYWRIGHT_PORT must be a valid TCP port.');
+}
+
+const appUrl = `http://127.0.0.1:${playwrightPort}`;
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -9,7 +16,7 @@ export default defineConfig({
   retries: isCI ? 2 : 0,
   reporter: isCI ? 'github' : 'list',
   use: {
-    baseURL: 'http://127.0.0.1:4173',
+    baseURL: appUrl,
     trace: 'on-first-retry',
   },
   projects: [
@@ -19,12 +26,12 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run dev -- --host 127.0.0.1 --port 4173 --strictPort',
+    command: `npm run dev -- --host 127.0.0.1 --port ${playwrightPort} --strictPort`,
     env: {
       VITE_SUPABASE_URL: 'http://127.0.0.1:54321',
       VITE_SUPABASE_PUBLISHABLE_KEY: 'e2e-publishable-key',
     },
-    url: 'http://127.0.0.1:4173',
+    url: appUrl,
     reuseExistingServer: !isCI,
     timeout: 30_000,
   },

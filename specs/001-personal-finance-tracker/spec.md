@@ -134,6 +134,23 @@ Una persona añade Mave a la pantalla de inicio de Safari en iPhone o la abre de
 
 **Requirements**: FR-023 a FR-025.
 
+### User Story 8 - Programar movimientos recurrentes (Priority: P2)
+
+Una persona programa ingresos o gastos que se repiten, recibe avisos opcionales antes del vencimiento y marca cada ocurrencia como pagada o cobrada para registrar el movimiento y avanzar al siguiente período.
+
+**Why this priority**: Los pagos y cobros periódicos se olvidan con facilidad; registrarlos una sola vez reduce trabajo repetitivo sin crear movimientos contables antes de que ocurran.
+
+**Independent Test**: Crear un gasto de gimnasio mensual con aviso siete días antes, repetir el aviso a diario y marcarlo pagado al tercer día. Comprobar que se crea un solo movimiento en la fecha real de pago, avanza el siguiente vencimiento y no llegan más avisos del vencimiento anterior.
+
+**Acceptance Scenarios**:
+
+1. **Given** una persona autenticada, **When** define ingreso o gasto, importe, categoría, vencimiento inicial y frecuencia, **Then** la recurrencia queda privada y visible en su agenda sin crear todavía un movimiento en el historial.
+2. **Given** una recurrencia mensual con avisos siete días antes cada día, **When** llega la ventana previa al vencimiento, **Then** Mave envía un aviso push diario a las 09:00 de la zona horaria elegida al crear la regla, hasta el vencimiento.
+3. **Given** una ocurrencia pendiente, **When** la persona la marca pagada o cobrada, **Then** Mave registra un único movimiento en la fecha real indicada, termina los avisos de esa ocurrencia y calcula el próximo vencimiento desde la fecha inicial, no desde la fecha de pago.
+4. **Given** una persona que pausa una recurrencia o desactiva sus avisos, **When** vence su siguiente ciclo, **Then** Mave no genera avisos mientras la regla o los avisos sigan desactivados; la recurrencia puede reanudarse.
+
+**Requirements**: FR-028.
+
 ### Edge Cases
 
 - La creación de una cuenta sin conexión se rechaza con una explicación; el uso offline requiere una sesión iniciada previamente.
@@ -146,6 +163,8 @@ Una persona añade Mave a la pantalla de inicio de Safari en iPhone o la abre de
 - Si hay cambios incompatibles del mismo movimiento desde dos dispositivos, Mave conserva ambas versiones para compararlas, no duplica el movimiento en los totales y espera una elección explícita de la persona.
 - Al cerrar sesión con movimientos pendientes, estos siguen asociados a la cuenta original y no se revelan a otra persona.
 - Durante los 30 días calendario de gracia, los movimientos pendientes pueden sincronizarse; después del vencimiento no se aceptan sincronizaciones tardías y el dispositivo elimina esos datos al reconectarse. Un dispositivo que no vuelva a conectarse puede conservar datos locales hasta que se borren sus datos.
+- Las recurrencias y sus pagos requieren conexión; los movimientos puntuales mantienen el flujo offline existente. Si Push no está disponible o permitido, la recurrencia sigue visible en la agenda, pero no se garantiza el aviso del dispositivo.
+- Una recurrencia mensual cuyo día inicial no exista en un mes más corto vence el último día de ese mes y vuelve al día original en los siguientes meses.
 
 ## Requirements *(mandatory)*
 
@@ -178,6 +197,7 @@ Una persona añade Mave a la pantalla de inicio de Safari en iPhone o la abre de
 - **FR-025**: La experiencia MUST adaptarse a pantallas angostas y amplias, permitir navegación por teclado y tecnologías de asistencia, mantener foco visible, cumplir contraste WCAG 2.2 AA y expresar estados sin depender únicamente del color.
 - **FR-026**: La persona MUST poder registrar, consultar, editar y borrar devoluciones parciales o totales vinculadas a un gasto propio. La devolución MUST tener importe positivo, moneda y categoría iguales a las del gasto, y fecha de recepción; su importe MUST NOT superar el importe del gasto aún no devuelto. La devolución MUST reducir los gastos del período en que se recibe y MUST NOT contarse como ingreso. Si el gasto tiene cuenta financiera asociada, la devolución MUST acreditarse a esa misma cuenta; si no, MUST afectar solo los totales generales.
 - **FR-027**: Mave MUST ofrecer un catálogo inicial de categorías y permitir que cada persona cree, renombre y archive categorías en su espacio privado. Una categoría archivada MUST NOT ofrecerse para movimientos nuevos; los movimientos existentes MUST conservar su asociación y mostrarla en el historial y los resúmenes. Las categorías de una persona MUST NOT ser visibles ni asignables por otra.
+- **FR-028**: La persona MUST poder crear ingresos o gastos recurrentes con importe, moneda, categoría, cuenta opcional, nota opcional, fecha inicial y frecuencia configurable por cantidad de días, semanas, meses o años. La recurrencia MUST NOT crear un movimiento contable antes de marcar una ocurrencia como pagada o cobrada. MUST poder configurar avisos push opcionales con días de anticipación y un intervalo entre avisos; estos se envían a las 09:00 locales hasta el vencimiento y se detienen al registrar el pago, pausar la recurrencia o desactivar avisos. Marcar una ocurrencia MUST crear un único movimiento con la fecha real de pago/cobro y avanzar el calendario anclado en la fecha inicial. Los datos recurrentes MUST pertenecer solo a su propietario.
 
 ### Out of Scope
 
@@ -185,7 +205,7 @@ Una persona añade Mave a la pantalla de inicio de Safari en iPhone o la abre de
 - Importación automática de bancos o Mercado Pago, conexión bancaria, OAuth y scraping.
 - Pagos, custodia de fondos y recomendaciones de inversión.
 - Deuda de tarjeta, cierres, vencimientos y conciliación de resúmenes; una compra puede anotarse como gasto común.
-- Notificaciones push, movimientos recurrentes, presupuestos avanzados y aplicación nativa.
+- Presupuestos avanzados y aplicación nativa.
 
 ### Key Entities *(include if feature involves data)*
 

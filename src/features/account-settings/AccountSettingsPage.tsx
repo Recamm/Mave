@@ -186,7 +186,7 @@ export function AccountSettingsSecurityPage() {
       </section>
       <section aria-labelledby="settings-web-login-push-title" className="settings-section">
         <div className="settings-section__heading">
-          <h2 id="settings-web-login-push-title">Notificaciones de acceso</h2>
+          <h2 id="settings-web-login-push-title">Notificaciones</h2>
         </div>
         <div className="settings-section__content">
           <WebLoginPushSettings />

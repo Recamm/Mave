@@ -118,8 +118,11 @@ export function WebLoginPushSettings() {
   return (
     <div aria-busy={isChecking} className="web-login-push-settings">
       <div className="web-login-push-settings__copy">
-        <h3>Notificaciones de acceso</h3>
-        <p>Recibe solicitudes de inicio de sesión cuando Mave esté cerrada en este dispositivo.</p>
+        <h3>Notificaciones de este dispositivo</h3>
+        <p>
+          Recibe avisos de acceso y de movimientos recurrentes. Desactivarlas detiene ambos tipos de
+          notificación.
+        </p>
       </div>
 
       {isChecking ? <LoadingIndicator label="Comprobando notificaciones" /> : null}

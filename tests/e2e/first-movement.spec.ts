@@ -179,6 +179,11 @@ test('registers a first movement, edits and deletes it, and manages categories',
       return;
     }
 
+    if (url.pathname === '/rest/v1/recurring_movements' && request.method() === 'GET') {
+      await respond([]);
+      return;
+    }
+
     if (url.pathname === '/rest/v1/transfers' && request.method() === 'GET') {
       await respond([]);
       return;

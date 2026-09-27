@@ -9,12 +9,15 @@ import { accountService, type FinancialAccount } from '../accounts/accountServic
 import { transferService, type Transfer } from '../accounts/transferService';
 import { categoryService, type Category } from '../categories/categoryService';
 import { MovementForm } from './MovementForm';
-import type { MovementInput } from './movementInput';
+import { createMovementDefaults, type MovementInput } from './movementInput';
 import { movementService, type FinancialAccountOption, type Movement } from './movementService';
 import { MovementHistory } from '../summaries/MovementHistory';
 import { getCurrentPeriod } from '../summaries/periodSummary';
 import { summaryService } from '../summaries/summaryService';
 import { refundService, type Refund } from './refundService';
+import { RecurringMovementsPanel } from './RecurringMovementsPanel';
+import { recurringMovementService, type RecurringMovement } from './recurringMovementService';
+import { getOccurrenceDate, type RecurrenceSettings } from './recurrence';
 import { readOwnerLookups, writeOwnerLookups } from '../sync/ownerLookupCache';
 import { ConflictResolver } from '../sync/ConflictResolver';
 import {
@@ -35,6 +38,7 @@ export function MovementList() {
   const [movements, setMovements] = useState<Movement[]>([]);
   const [conflicts, setConflicts] = useState<MovementConflict[]>([]);
   const [refunds, setRefunds] = useState<Refund[]>([]);
+  const [recurringMovements, setRecurringMovements] = useState<RecurringMovement[]>([]);
   const [period] = useState(() => getCurrentPeriod());
   const [editingMovement, setEditingMovement] = useState<Movement | null>(null);
   const [isMovementFormOpen, setIsMovementFormOpen] = useState(false);
@@ -42,6 +46,7 @@ export function MovementList() {
   const [isAccountOverviewLoading, setIsAccountOverviewLoading] = useState(true);
   const [hasAccountOverviewError, setHasAccountOverviewError] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [recurringLoadFailed, setRecurringLoadFailed] = useState(false);
   const [actionError, setActionError] = useState(false);
   const [expiredPendingPurged, setExpiredPendingPurged] = useState(false);
   const movementDialogRef = useRef<HTMLDialogElement>(null);
@@ -60,6 +65,8 @@ export function MovementList() {
     setHasAccountOverviewError(false);
     setConflicts([]);
     setExpiredPendingPurged(false);
+    setRecurringMovements([]);
+    setRecurringLoadFailed(false);
     setAccounts([]);
     setTransfers([]);
 
@@ -92,15 +99,20 @@ export function MovementList() {
         movementService.listFinancialAccounts(),
       ]);
       const syncPromise = ownerId ? syncEngine.synchronizePending(ownerId) : Promise.resolve([]);
+      const recurringPromise = ownerId
+        ? recurringMovementService.list()
+        : Promise.resolve<RecurringMovement[]>([]);
       const accountOverviewPromise = Promise.all([
         accountService.listAccounts(),
         transferService.listTransfers(),
       ]);
-      const [readResult, syncResult, accountOverviewResult] = await Promise.allSettled([
-        readsPromise,
-        syncPromise,
-        accountOverviewPromise,
-      ]);
+      const [readResult, syncResult, accountOverviewResult, recurringResult] =
+        await Promise.allSettled([
+          readsPromise,
+          syncPromise,
+          accountOverviewPromise,
+          recurringPromise,
+        ]);
 
       if (!isCurrent) {
         return;
@@ -136,6 +148,13 @@ export function MovementList() {
         setHasAccountOverviewError(true);
       }
       setIsAccountOverviewLoading(false);
+
+      if (recurringResult.status === 'fulfilled') {
+        setRecurringMovements(recurringResult.value);
+        setRecurringLoadFailed(false);
+      } else {
+        setRecurringLoadFailed(true);
+      }
 
       if (syncResult.status === 'fulfilled') {
         const discardedPendingCount = syncResult.value.reduce(
@@ -196,9 +215,10 @@ export function MovementList() {
           (count, result) => count + (result.discardedPendingCount ?? 0),
           0,
         );
-        const [periodRecords, openConflicts] = await Promise.all([
+        const [periodRecords, openConflicts, loadedRecurringMovements] = await Promise.all([
           summaryService.listPeriodRecords(),
           syncEngine.listOpenConflicts(syncOwnerId),
+          recurringMovementService.list().catch(() => null),
         ]);
         const visibleMovements = await syncEngine.listVisibleMovements(
           syncOwnerId,
@@ -219,6 +239,10 @@ export function MovementList() {
         setMovements(applySyncResults(visibleSyncedMovements, results));
         setRefunds(periodRecords.refunds);
         setConflicts(openConflicts);
+        if (loadedRecurringMovements) {
+          setRecurringMovements(loadedRecurringMovements);
+          setRecurringLoadFailed(false);
+        }
       } catch {
         return;
       } finally {
@@ -271,9 +295,26 @@ export function MovementList() {
     }
   }
 
-  async function handleSave(input: MovementInput) {
+  async function handleSave(input: MovementInput, recurrence?: RecurrenceSettings) {
     if (!ownerId) {
       throw new Error('Authenticated owner is unavailable.');
+    }
+
+    if (recurrence) {
+      const createdRecurringMovement = await recurringMovementService.create({
+        ...input,
+        ...recurrence,
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+      });
+      setRecurringMovements((current) =>
+        [...current, createdRecurringMovement].sort((left, right) =>
+          left.nextDueOn.localeCompare(right.nextDueOn),
+        ),
+      );
+      setEditingMovement(null);
+      setIsMovementFormOpen(false);
+      setActionError(false);
+      return;
     }
 
     const result = await syncEngine.submitMovementChange({
@@ -300,6 +341,58 @@ export function MovementList() {
     setEditingMovement(null);
     setIsMovementFormOpen(false);
     setActionError(false);
+  }
+
+  async function handleMarkRecurringMovementPaid(recurringMovement: RecurringMovement) {
+    if (!ownerId) {
+      throw new Error('Authenticated owner is unavailable.');
+    }
+
+    const paidMovement = await recurringMovementService.markPaid(
+      recurringMovement.id,
+      recurringMovement.occurrence_index,
+      createMovementDefaults().occurredOn,
+      crypto.randomUUID(),
+    );
+    setMovements((current) =>
+      [paidMovement, ...current.filter((movement) => movement.id !== paidMovement.id)].sort(
+        sortByDate,
+      ),
+    );
+    setRecurringMovements((current) =>
+      current.map((item) => {
+        if (item.id !== recurringMovement.id) {
+          return item;
+        }
+
+        const nextOccurrenceIndex = item.occurrence_index + 1;
+        return {
+          ...item,
+          last_notified_on: null,
+          nextDueOn: getOccurrenceDate(
+            item.starts_on,
+            nextOccurrenceIndex,
+            item.interval_count,
+            item.interval_unit,
+          ),
+          occurrence_index: nextOccurrenceIndex,
+        };
+      }),
+    );
+    void recurringMovementService
+      .list()
+      .then(setRecurringMovements)
+      .catch(() => undefined);
+  }
+
+  async function handleSetRecurringActive(id: string, active: boolean) {
+    const updated = await recurringMovementService.setActive(id, active);
+    setRecurringMovements((current) => current.map((item) => (item.id === id ? updated : item)));
+  }
+
+  async function handleSetRecurringReminder(id: string, reminderEnabled: boolean) {
+    const updated = await recurringMovementService.setReminderEnabled(id, reminderEnabled);
+    setRecurringMovements((current) => current.map((item) => (item.id === id ? updated : item)));
   }
 
   async function handleDelete(movement: Movement) {
@@ -459,6 +552,15 @@ export function MovementList() {
         conflicts={conflicts}
         financialAccounts={financialAccounts}
         onResolve={(conflict, revision) => void handleResolveConflict(conflict, revision)}
+      />
+
+      <RecurringMovementsPanel
+        categories={categories}
+        loadFailed={recurringLoadFailed}
+        movements={recurringMovements}
+        onMarkPaid={handleMarkRecurringMovementPaid}
+        onSetActive={handleSetRecurringActive}
+        onSetReminderEnabled={handleSetRecurringReminder}
       />
 
       {isMovementFormOpen ? (

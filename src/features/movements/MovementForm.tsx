@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { FeedbackMessage } from '../../app/components/FeedbackMessage';
+import { WebLoginPushSettings } from '../auth/WebLoginPushSettings';
 import type { Category } from '../categories/categoryService';
 import {
   createMovementDefaults,
@@ -8,6 +9,13 @@ import {
   type MovementDraft,
   type MovementInput,
 } from './movementInput';
+import {
+  createRecurrenceDraft,
+  normalizeRecurrenceSettings,
+  RecurrenceInputError,
+  type RecurrenceDraft,
+  type RecurrenceSettings,
+} from './recurrence';
 import type { FinancialAccount } from '../accounts/accountService';
 import type { FinancialAccountOption, Movement } from './movementService';
 
@@ -17,7 +25,7 @@ type MovementFormProps = {
   financialAccounts: FinancialAccountOption[];
   movement?: Movement | null;
   onCancel: () => void;
-  onSave: (input: MovementInput) => Promise<void>;
+  onSave: (input: MovementInput, recurrence?: RecurrenceSettings) => Promise<void>;
 };
 
 function toDraft(movement: Movement): MovementDraft {
@@ -52,6 +60,8 @@ export function MovementForm({
       financialAccountId: defaultAccount?.id ?? defaults.financialAccountId,
     };
   });
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurrenceDraft, setRecurrenceDraft] = useState(createRecurrenceDraft);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const archivedCategory = categories.find(
@@ -70,16 +80,26 @@ export function MovementForm({
     setDraft((current) => ({ ...current, [key]: value }));
   }
 
+  function updateRecurrenceDraft<Key extends keyof RecurrenceDraft>(
+    key: Key,
+    value: RecurrenceDraft[Key],
+  ) {
+    setRecurrenceDraft((current) => ({ ...current, [key]: value }));
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsSaving(true);
     setErrorMessage(null);
 
     try {
-      await onSave(normalizeMovementInput(draft));
+      await onSave(
+        normalizeMovementInput(draft),
+        isRecurring ? normalizeRecurrenceSettings(recurrenceDraft) : undefined,
+      );
     } catch (error) {
       setErrorMessage(
-        error instanceof MovementInputError
+        error instanceof MovementInputError || error instanceof RecurrenceInputError
           ? error.message
           : 'No se pudo guardar el movimiento. Inténtalo de nuevo.',
       );
@@ -91,13 +111,47 @@ export function MovementForm({
   return (
     <section aria-labelledby="movement-form-title" className="movement-editor">
       <div className="movement-editor__heading">
-        <p className="eyebrow">{movement ? 'Editar registro' : 'Nuevo registro'}</p>
+        <p className="eyebrow">
+          {movement ? 'Editar registro' : isRecurring ? 'Nueva recurrencia' : 'Nuevo registro'}
+        </p>
         <h2 id="movement-form-title">
-          {movement ? 'Editar movimiento' : 'Registrar un movimiento'}
+          {movement
+            ? 'Editar movimiento'
+            : isRecurring
+              ? 'Crear movimiento recurrente'
+              : 'Registrar un movimiento'}
         </h2>
       </div>
 
       <form className="movement-form" onSubmit={handleSubmit}>
+        {!movement ? (
+          <fieldset className="movement-form__frequency">
+            <legend>Frecuencia</legend>
+            <div className="movement-form__frequency-options">
+              <label className={!isRecurring ? 'is-selected' : ''}>
+                <input
+                  checked={!isRecurring}
+                  name="movement-frequency-mode"
+                  onChange={() => setIsRecurring(false)}
+                  type="radio"
+                  value="once"
+                />
+                <span>Una vez</span>
+              </label>
+              <label className={isRecurring ? 'is-selected' : ''}>
+                <input
+                  checked={isRecurring}
+                  name="movement-frequency-mode"
+                  onChange={() => setIsRecurring(true)}
+                  type="radio"
+                  value="recurring"
+                />
+                <span>Recurrente</span>
+              </label>
+            </div>
+          </fieldset>
+        ) : null}
+
         <label htmlFor="movement-kind">Tipo</label>
         <select
           id="movement-kind"
@@ -135,7 +189,7 @@ export function MovementForm({
           <option value="USD">USD</option>
         </select>
 
-        <label htmlFor="movement-date">Fecha</label>
+        <label htmlFor="movement-date">{isRecurring ? 'Primer vencimiento' : 'Fecha'}</label>
         <input
           id="movement-date"
           onChange={(event) => updateDraft('occurredOn', event.target.value)}
@@ -185,6 +239,78 @@ export function MovementForm({
           value={draft.note}
         />
 
+        {isRecurring ? (
+          <fieldset className="movement-form__recurrence-settings">
+            <legend>Repetición y avisos</legend>
+            <label htmlFor="recurrence-interval-count">Se repite cada</label>
+            <div className="movement-form__interval-control">
+              <input
+                id="recurrence-interval-count"
+                max={365}
+                min={1}
+                onChange={(event) => updateRecurrenceDraft('intervalCount', event.target.value)}
+                required
+                type="number"
+                value={recurrenceDraft.intervalCount}
+              />
+              <select
+                aria-label="Unidad de frecuencia"
+                onChange={(event) => updateRecurrenceDraft('intervalUnit', event.target.value)}
+                value={recurrenceDraft.intervalUnit}
+              >
+                <option value="day">día</option>
+                <option value="week">semana</option>
+                <option value="month">mes</option>
+                <option value="year">año</option>
+              </select>
+            </div>
+
+            <label className="movement-form__checkbox" htmlFor="recurrence-reminder-enabled">
+              <input
+                checked={recurrenceDraft.reminderEnabled}
+                id="recurrence-reminder-enabled"
+                onChange={(event) => updateRecurrenceDraft('reminderEnabled', event.target.checked)}
+                type="checkbox"
+              />
+              <span>Activar avisos</span>
+            </label>
+
+            {recurrenceDraft.reminderEnabled ? (
+              <>
+                <label htmlFor="recurrence-reminder-days-before">Avisar con cuántos días</label>
+                <input
+                  id="recurrence-reminder-days-before"
+                  max={365}
+                  min={0}
+                  onChange={(event) =>
+                    updateRecurrenceDraft('reminderDaysBefore', event.target.value)
+                  }
+                  required
+                  type="number"
+                  value={recurrenceDraft.reminderDaysBefore}
+                />
+
+                <label htmlFor="recurrence-reminder-every-days">
+                  Repetir aviso cada cuántos días
+                </label>
+                <input
+                  id="recurrence-reminder-every-days"
+                  max={365}
+                  min={1}
+                  onChange={(event) =>
+                    updateRecurrenceDraft('reminderEveryDays', event.target.value)
+                  }
+                  required
+                  type="number"
+                  value={recurrenceDraft.reminderEveryDays}
+                />
+
+                <WebLoginPushSettings />
+              </>
+            ) : null}
+          </fieldset>
+        ) : null}
+
         {errorMessage ? (
           <div className="movement-form__feedback">
             <FeedbackMessage tone="error">{errorMessage}</FeedbackMessage>
@@ -193,7 +319,13 @@ export function MovementForm({
 
         <div className="movement-form__actions">
           <button className="button-primary" disabled={isSaving} type="submit">
-            {isSaving ? 'Guardando…' : movement ? 'Guardar cambios' : 'Registrar movimiento'}
+            {isSaving
+              ? 'Guardando…'
+              : movement
+                ? 'Guardar cambios'
+                : isRecurring
+                  ? 'Crear recurrencia'
+                  : 'Registrar movimiento'}
           </button>
           {movement ? (
             <button disabled={isSaving} onClick={onCancel} type="button">

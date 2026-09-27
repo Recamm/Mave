@@ -41,6 +41,19 @@ npx supabase start
 npx supabase test db
 ```
 
+## Avisos de movimientos recurrentes
+
+La migración `0014_recurring_movements_and_reminders.sql` programa un trabajo `pg_cron` cada 15 minutos y crea la función `process-recurring-movement-reminders`. Despliega la función después de aplicar la migración:
+
+```powershell
+npx supabase db push
+npx supabase functions deploy process-recurring-movement-reminders
+```
+
+El worker usa las mismas claves VAPID indicadas arriba y el secreto `ACCOUNT_DELETION_CRON_SECRET`. El trabajo Cron también reutiliza los secretos Vault `account_deletion_project_url`, `account_deletion_publishable_key` y `account_deletion_cron_secret` que requiere el job de eliminación programada; confirma que estén configurados y que el secreto Cron coincida con el de la función Edge. La SPA guarda la zona horaria del dispositivo al crear la recurrencia. Los avisos se envían a las 09:00 de esa zona, desde el número de días elegido hasta el vencimiento, con la separación indicada. Pagar o cobrar, pausar la recurrencia o desactivar sus avisos detiene la serie correspondiente.
+
+La configuración de notificaciones del dispositivo se comparte con los avisos de acceso. La regla y su agenda siguen visibles aunque el navegador no admita Push; crear una recurrencia y marcar un pago requieren conexión a Internet.
+
 ## Validación operativa
 
 Prueba con dos dispositivos y una cuenta de prueba confirmada: solicita acceso en PC, confirma el popup con Mave abierta, rechaza otra solicitud, cierra Mave y confirma la notificación genérica y su apertura. Verifica también que un correo desconocido no revele si hay una cuenta, que un código incorrecto consuma un intento y que el sexto intento no sea posible. No incluyas códigos, tokens ni endpoints push en capturas o reportes.

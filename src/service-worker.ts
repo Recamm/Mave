@@ -35,7 +35,7 @@ interface ServiceWorkerPushEvent extends ServiceWorkerLifecycleEvent {
 }
 
 interface ServiceWorkerNotificationClickEvent extends ServiceWorkerLifecycleEvent {
-  notification: { close(): void };
+  notification: { close(): void; data?: unknown };
 }
 
 const worker = self as unknown as ServiceWorkerRuntime;
@@ -89,6 +89,21 @@ worker.addEventListener('push', (event) => {
       } catch {
         return;
       }
+      if (isRecurringMovementReminderPush(payload)) {
+        const title = payload.kind === 'income' ? 'Cobro próximo' : 'Pago próximo';
+        await worker.registration.showNotification(title, {
+          body: `${payload.label}: ${payload.amount} ${payload.currency}, vence el ${payload.dueOn}.`,
+          data: {
+            url: new URL(
+              `?recurringId=${encodeURIComponent(payload.recurringMovementId)}`,
+              appScope,
+            ).toString(),
+          },
+          icon: new URL('icons/icon-192.png', appScope).toString(),
+          tag: `recurring-${payload.recurringMovementId}-${payload.dueOn}`,
+        });
+        return;
+      }
       if (!isWebLoginPush(payload)) {
         return;
       }
@@ -119,17 +134,20 @@ worker.addEventListener('notificationclick', (event) => {
     (async () => {
       const clients = await worker.clients.matchAll({ includeUncontrolled: true, type: 'window' });
       const appClient = clients.find(isAppClient);
+      const targetUrl = notificationTargetUrl(clickEvent.notification.data);
       if (appClient) {
         try {
-          await appClient.navigate?.(approvalInboxUrl);
+          await appClient.navigate?.(targetUrl);
         } catch {
-          appClient.postMessage({ type: 'web-login-code-pending' });
+          if (targetUrl === approvalInboxUrl) {
+            appClient.postMessage({ type: 'web-login-code-pending' });
+          }
         }
         await appClient.focus();
         return;
       }
 
-      await worker.clients.openWindow(approvalInboxUrl);
+      await worker.clients.openWindow(targetUrl);
     })(),
   );
 });
@@ -194,6 +212,50 @@ function isWebLoginPush(value: unknown): value is { requestId: string; type: 'we
       payload.requestId,
     )
   );
+}
+
+function isRecurringMovementReminderPush(value: unknown): value is {
+  amount: string;
+  currency: 'ARS' | 'USD';
+  dueOn: string;
+  kind: 'income' | 'expense';
+  label: string;
+  recurringMovementId: string;
+  type: 'recurring-movement-reminder';
+} {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false;
+  }
+  const payload = value as Record<string, unknown>;
+  return (
+    payload.type === 'recurring-movement-reminder' &&
+    typeof payload.amount === 'string' &&
+    (payload.currency === 'ARS' || payload.currency === 'USD') &&
+    typeof payload.dueOn === 'string' &&
+    /^\d{4}-\d{2}-\d{2}$/.test(payload.dueOn) &&
+    (payload.kind === 'income' || payload.kind === 'expense') &&
+    typeof payload.label === 'string' &&
+    typeof payload.recurringMovementId === 'string' &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      payload.recurringMovementId,
+    )
+  );
+}
+
+function notificationTargetUrl(value: unknown): string {
+  if (typeof value !== 'object' || value === null || !('url' in value)) {
+    return approvalInboxUrl;
+  }
+
+  try {
+    const targetUrl = new URL(String(value.url), appScope);
+    const scopeUrl = new URL(appScope);
+    return targetUrl.origin === scopeUrl.origin && targetUrl.pathname.startsWith(scopeUrl.pathname)
+      ? targetUrl.toString()
+      : approvalInboxUrl;
+  } catch {
+    return approvalInboxUrl;
+  }
 }
 
 function isAppClient(client: ServiceWorkerWindowClient): boolean {

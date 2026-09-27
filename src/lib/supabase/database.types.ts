@@ -319,6 +319,112 @@ export type Database = {
         };
         Relationships: [];
       };
+      recurring_movements: {
+        Row: {
+          active: boolean;
+          amount: number;
+          amount_text: string;
+          category_id: string;
+          created_at: string;
+          currency: 'ARS' | 'USD';
+          financial_account_id: string | null;
+          id: string;
+          interval_count: number;
+          interval_unit: 'day' | 'week' | 'month' | 'year';
+          kind: 'income' | 'expense';
+          last_notified_on: string | null;
+          note: string | null;
+          occurrence_index: number;
+          reminder_days_before: number;
+          reminder_enabled: boolean;
+          reminder_every_days: number;
+          starts_on: string;
+          time_zone: string;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          active?: boolean;
+          amount: string;
+          category_id: string;
+          created_at?: string;
+          currency: 'ARS' | 'USD';
+          financial_account_id?: string | null;
+          id?: string;
+          interval_count: number;
+          interval_unit: 'day' | 'week' | 'month' | 'year';
+          kind: 'income' | 'expense';
+          last_notified_on?: string | null;
+          note?: string | null;
+          occurrence_index?: number;
+          reminder_days_before?: number;
+          reminder_enabled?: boolean;
+          reminder_every_days?: number;
+          starts_on: string;
+          time_zone?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Update: {
+          active?: boolean;
+          amount?: string;
+          category_id?: string;
+          created_at?: string;
+          currency?: 'ARS' | 'USD';
+          financial_account_id?: string | null;
+          id?: string;
+          interval_count?: number;
+          interval_unit?: 'day' | 'week' | 'month' | 'year';
+          kind?: 'income' | 'expense';
+          last_notified_on?: string | null;
+          note?: string | null;
+          occurrence_index?: number;
+          reminder_days_before?: number;
+          reminder_enabled?: boolean;
+          reminder_every_days?: number;
+          starts_on?: string;
+          time_zone?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      recurring_movement_payments: {
+        Row: {
+          client_operation_id: string;
+          created_at: string;
+          due_on: string;
+          id: string;
+          movement_id: string;
+          occurrence_index: number;
+          paid_on: string;
+          recurring_movement_id: string;
+          user_id: string;
+        };
+        Insert: {
+          client_operation_id: string;
+          created_at?: string;
+          due_on: string;
+          id?: string;
+          movement_id: string;
+          occurrence_index: number;
+          paid_on: string;
+          recurring_movement_id: string;
+          user_id?: string;
+        };
+        Update: {
+          client_operation_id?: string;
+          created_at?: string;
+          due_on?: string;
+          id?: string;
+          movement_id?: string;
+          occurrence_index?: number;
+          paid_on?: string;
+          recurring_movement_id?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       refunds: {
         Row: RefundRow;
         Insert: {
@@ -405,6 +511,38 @@ export type Database = {
           p_refund_id: string | null;
         };
         Returns: RefundRow;
+      };
+      claim_due_recurring_movement_reminders: {
+        Args: { p_now?: string };
+        Returns: {
+          amount_text: string;
+          auth_secret: string;
+          currency: string;
+          due_on: string;
+          endpoint: string;
+          kind: string;
+          label: string;
+          p256dh: string;
+          recurring_movement_id: string;
+        }[];
+      };
+      mark_recurring_movement_paid: {
+        Args: {
+          p_expected_occurrence_index: number;
+          p_operation_id: string;
+          p_paid_on: string;
+          p_recurring_movement_id: string;
+        };
+        Returns: Json;
+      };
+      recurring_movement_occurrence_on: {
+        Args: {
+          p_interval_count: number;
+          p_interval_unit: string;
+          p_occurrence_index: number;
+          p_starts_on: string;
+        };
+        Returns: string;
       };
       apply_movement_change: {
         Args: {
