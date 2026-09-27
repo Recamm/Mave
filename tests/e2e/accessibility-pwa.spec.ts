@@ -93,6 +93,7 @@ test('keeps the sign-in flow keyboard accessible at a narrow viewport', async ({
   });
   await expect(firstMode).toBeFocused();
   await expect(firstMode).toHaveCSS('outline-width', '3px');
+  await expect(firstMode).toHaveCSS('border-radius', '0px');
 
   const documentWidth = await page.evaluate(() => document.documentElement.scrollWidth);
   expect(documentWidth).toBeLessThanOrEqual(320);

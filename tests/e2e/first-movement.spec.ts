@@ -336,11 +336,17 @@ test('registers a first movement, edits and deletes it, and manages categories',
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   expect(await page.evaluate(() => localStorage.getItem('mave.appearance'))).toBe('dark');
   const navigationSettings = page.getByRole('group', { name: 'Barra de navegación' });
+  const settingsViewport = page.viewportSize();
+  await page.setViewportSize({ width: 390, height: 844 });
   await navigationSettings.getByRole('radio', { name: 'Flotante' }).check();
+  await expect(page.locator('.mobile-navigation')).toHaveCSS('border-radius', '999px');
   expect(await page.evaluate(() => localStorage.getItem('mave.mobile-navigation-style'))).toBe(
     'floating',
   );
   await navigationSettings.getByRole('radio', { name: 'Normal' }).check();
+  if (settingsViewport) {
+    await page.setViewportSize(settingsViewport);
+  }
   const movementTypeSettings = page.getByRole('group', {
     name: 'Formato del tipo de movimiento',
   });
