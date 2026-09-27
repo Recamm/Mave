@@ -290,6 +290,7 @@ test('registers a first movement, edits and deletes it, and manages categories',
     .getByRole('listitem')
     .filter({ hasText: 'Alimentación' });
   await expect(movementAfterReload).toContainText('ARS 1.250,50');
+  await expect(movementAfterReload.getByRole('img', { name: 'Egreso' })).toHaveText('Egreso');
   await movementAfterReload.locator('details').first().locator('summary').click();
   await movementAfterReload.getByRole('button', { name: 'Editar movimiento' }).click();
   await page.getByLabel('Importe').fill('1500.75');
@@ -309,6 +310,13 @@ test('registers a first movement, edits and deletes it, and manages categories',
     'floating',
   );
   await navigationSettings.getByRole('radio', { name: 'Normal' }).check();
+  const movementTypeSettings = page.getByRole('group', {
+    name: 'Formato del tipo de movimiento',
+  });
+  await movementTypeSettings.getByRole('radio', { name: 'Signos: + / -' }).check();
+  expect(await page.evaluate(() => localStorage.getItem('mave.movement-type-display'))).toBe(
+    'symbols',
+  );
 
   await page.getByRole('button', { name: 'Gestionar categorías' }).click();
   const categoryManager = page.getByRole('region', { name: 'Gestionar categorías' });
@@ -326,6 +334,13 @@ test('registers a first movement, edits and deletes it, and manages categories',
   await page.getByRole('button', { name: 'Cerrar categorías' }).click();
   await page.getByRole('link', { name: 'Inicio', exact: true }).click();
   await expect(movementAfterReload).toContainText('Alimentación');
+  await expect(movementAfterReload.getByRole('img', { name: 'Egreso' })).toHaveText('-');
+  await page.reload();
+  const persistedMovement = page
+    .getByRole('list', { name: 'Historial de movimientos' })
+    .getByRole('listitem')
+    .filter({ hasText: 'Alimentación' });
+  await expect(persistedMovement.getByRole('img', { name: 'Egreso' })).toHaveText('-');
   await page.getByRole('button', { name: 'Nuevo movimiento' }).click();
   await expect(
     page.getByLabel('Categoría', { exact: true }).getByRole('option', { name: 'Alimentación' }),

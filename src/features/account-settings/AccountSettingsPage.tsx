@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { FeedbackMessage } from '../../app/components/FeedbackMessage';
 import { MobileNavigationSettings } from '../../app/components/MobileNavigationSettings';
+import { MovementTypeDisplaySettings } from '../../app/components/MovementTypeDisplaySettings';
 import { useAuthSession } from '../../app/useAuthSession';
 import { signOutWithPendingWarning } from '../auth/logoutService';
 import { CategoryManager } from '../categories/CategoryManager';
@@ -92,6 +93,7 @@ export function AccountSettingsPage() {
       <section aria-label="Preferencias">
         <AppearanceSettings />
         <MobileNavigationSettings />
+        <MovementTypeDisplaySettings />
       </section>
 
       <section aria-labelledby="profile-categories-title" className="profile-section">

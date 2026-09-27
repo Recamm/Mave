@@ -1,4 +1,4 @@
-import { Link, NavLink, Navigate, Outlet, Route, Routes } from 'react-router-dom';
+import { Link, NavLink, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
 import { useAuthSession } from './useAuthSession';
 import { FeedbackMessage } from './components/FeedbackMessage';
 import { getAppErrorMessage } from '../lib/errors';
@@ -51,12 +51,14 @@ function SessionRoute() {
 }
 
 function AuthenticatedHome() {
+  const { pathname } = useLocation();
+
   return (
     <div className="authenticated-home">
       <a className="skip-link" href="#main-content">
         Ir al contenido
       </a>
-      <header className="session-strip">
+      <header className={pathname === '/' ? 'session-strip session-strip--home' : 'session-strip'}>
         <Link aria-label="Mave, inicio" className="session-brand" to="/">
           <img alt="" src={brandLogo} />
           <span>Mave</span>

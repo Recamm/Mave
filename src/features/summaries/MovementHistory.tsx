@@ -1,6 +1,12 @@
 import Big from 'big.js';
 import { ChevronDown } from 'lucide-react';
 import { useState } from 'react';
+import {
+  getMovementTypeDisplayPreference,
+  getMovementTypeLabel,
+  type MovementKindDisplay,
+  type MovementTypeDisplayPreference,
+} from '../../app/movementTypeDisplay';
 import type { Category } from '../categories/categoryService';
 import { RefundForm } from '../movements/RefundForm';
 import type { FinancialAccountOption, Movement } from '../movements/movementService';
@@ -50,6 +56,7 @@ type CategoryHistoryGroup = {
 
 type HistoryEntryProps = {
   entry: PeriodHistoryEntry;
+  movementTypeDisplayPreference: MovementTypeDisplayPreference;
   categoryNames: Map<string, string>;
   financialAccounts: FinancialAccountOption[];
   onEditMovement: (movement: Movement) => void;
@@ -81,6 +88,7 @@ export function MovementHistory({
 }: MovementHistoryProps) {
   const [view, setView] = useState<HistoryView>('general');
   const [kindFilter, setKindFilter] = useState<HistoryKindFilter>('all');
+  const [movementTypeDisplayPreference] = useState(() => getMovementTypeDisplayPreference());
   const [expandedCategoryKeys, setExpandedCategoryKeys] = useState<Set<string>>(() => new Set());
   const dateRange = getSummaryPeriod(period);
   const movementsInPeriod = movements.filter(
@@ -234,6 +242,7 @@ export function MovementHistory({
                 categoryNames={categoryNames}
                 entry={entry}
                 financialAccounts={financialAccounts}
+                movementTypeDisplayPreference={movementTypeDisplayPreference}
                 key={`${entry.type}:${entry.id}`}
                 onDeleteMovement={onDeleteMovement}
                 onDeleteRefund={onDeleteRefund}
@@ -258,9 +267,10 @@ export function MovementHistory({
                     onClick={() => toggleCategoryGroup(groupKey)}
                     type="button"
                   >
-                    <span className={`movement-row__kind movement-row__kind--${group.kind}`}>
-                      {group.kind === 'income' ? 'Ingreso' : 'Gasto'}
-                    </span>
+                    <MovementTypeBadge
+                      kind={group.kind}
+                      preference={movementTypeDisplayPreference}
+                    />
                     <strong>{categoryNames.get(group.categoryId) ?? 'Categoría'}</strong>
                     <output>{formatMoney(group.total.toFixed(2), group.currency)}</output>
                     <ChevronDown
@@ -275,6 +285,7 @@ export function MovementHistory({
                         categoryNames={categoryNames}
                         entry={entry}
                         financialAccounts={financialAccounts}
+                        movementTypeDisplayPreference={movementTypeDisplayPreference}
                         key={`${entry.type}:${entry.id}`}
                         onDeleteMovement={onDeleteMovement}
                         onDeleteRefund={onDeleteRefund}
@@ -297,8 +308,26 @@ export function MovementHistory({
   );
 }
 
+type MovementTypeBadgeProps = {
+  kind: MovementKindDisplay;
+  preference: MovementTypeDisplayPreference;
+};
+
+function MovementTypeBadge({ kind, preference }: MovementTypeBadgeProps) {
+  return (
+    <span
+      aria-label={getMovementTypeLabel(kind, 'words')}
+      className={`movement-row__kind movement-row__kind--${kind}`}
+      role="img"
+    >
+      {getMovementTypeLabel(kind, preference)}
+    </span>
+  );
+}
+
 function HistoryEntry({
   entry,
+  movementTypeDisplayPreference,
   categoryNames,
   financialAccounts,
   onEditMovement,
@@ -340,18 +369,14 @@ function HistoryEntry({
   }
 
   const categoryName = categoryNames.get(entry.movement.category_id) ?? 'Categoría';
-  const kindLabel = entry.movement.kind === 'income' ? 'Ingreso' : 'Gasto';
-
   return (
     <li className="movement-row">
       <details className="movement-entry">
         <summary className="movement-entry__summary">
-          <span
-            aria-label={kindLabel}
-            className={`movement-row__kind movement-row__kind--${entry.movement.kind}`}
-          >
-            {kindLabel}
-          </span>
+          <MovementTypeBadge
+            kind={entry.movement.kind}
+            preference={movementTypeDisplayPreference}
+          />
           <span className="movement-entry__summary-main">
             <strong>{categoryName}</strong>
             <time dateTime={entry.movement.occurred_on}>
