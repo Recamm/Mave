@@ -32,6 +32,8 @@ Los comandos `supabase start`, `supabase db reset` y `supabase test db` se habil
 
 Configurar el entorno local con la URL Supabase y la publishable key, por ejemplo `VITE_SUPABASE_URL` y `VITE_SUPABASE_PUBLISHABLE_KEY`. Son valores destinados al cliente y solo son seguros junto con RLS y grants correctos. No agregar `service_role`, claves secretas ni credenciales SMTP a variables `VITE_*`, al bundle o al repositorio. Las credenciales administrativas de la función programada se configuran como secretos del entorno server-side de Supabase. Mantener `.env.local` fuera del control de versiones.
 
+Antes de activar la migración `0008_schedule_account_deletion.sql`, configurar en el entorno de funciones Edge el secreto `ACCOUNT_DELETION_CRON_SECRET` y crear en Vault los secretos `account_deletion_project_url`, `account_deletion_publishable_key` y `account_deletion_cron_secret`; este último debe coincidir con el secreto de la función. La función usa la clave administrativa solo desde el entorno confiable de Edge. No copiar valores secretos al repositorio, al SQL de la migración ni a variables `VITE_*`.
+
 ## Escenarios de validación
 
 ### 1. Auth y aislamiento

@@ -8,6 +8,7 @@ import { signOutWithPendingWarning } from '../features/auth/logoutService';
 import { MovementList } from '../features/movements/MovementList';
 import { AccountsPage } from '../features/accounts/AccountsPage';
 import { GoalsPage } from '../features/goals/GoalsPage';
+import { AccountSettingsPage } from '../features/account-settings/AccountSettingsPage';
 
 export function AppRoutes() {
   return (
@@ -16,6 +17,7 @@ export function AppRoutes() {
         <Route path="/" element={<MovementList />} />
         <Route path="/accounts" element={<AccountsPage />} />
         <Route path="/goals" element={<GoalsPage />} />
+        <Route path="/settings" element={<AccountSettingsPage />} />
       </Route>
       <Route path="*" element={<NotFoundRoute />} />
     </Routes>
@@ -77,6 +79,7 @@ function AuthenticatedHome({ email, ownerId }: { email: string; ownerId: string 
         </NavLink>
         <NavLink to="/accounts">Cuentas y transferencias</NavLink>
         <NavLink to="/goals">Metas</NavLink>
+        <NavLink to="/settings">Datos y privacidad</NavLink>
       </nav>
       <Outlet />
     </div>

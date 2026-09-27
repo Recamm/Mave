@@ -54,9 +54,38 @@ type TransferRow = {
   user_id: string;
 };
 
+type AccountLifecycleRow = {
+  deletion_canceled_at: string | null;
+  deletion_due_at: string | null;
+  deletion_requested_at: string | null;
+  deletion_started_at: string | null;
+  deletion_worker_lease_until: string | null;
+  user_id: string;
+};
+
 export type Database = {
   public: {
     Tables: {
+      account_lifecycle: {
+        Row: AccountLifecycleRow;
+        Insert: {
+          deletion_canceled_at?: string | null;
+          deletion_due_at?: string | null;
+          deletion_requested_at?: string | null;
+          deletion_started_at?: string | null;
+          deletion_worker_lease_until?: string | null;
+          user_id: string;
+        };
+        Update: {
+          deletion_canceled_at?: string | null;
+          deletion_due_at?: string | null;
+          deletion_requested_at?: string | null;
+          deletion_started_at?: string | null;
+          deletion_worker_lease_until?: string | null;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       categories: {
         Row: {
           archived_at: string | null;
@@ -342,6 +371,26 @@ export type Database = {
     };
     Views: { [_ in never]: never };
     Functions: {
+      request_account_deletion: {
+        Args: Record<PropertyKey, never>;
+        Returns: AccountLifecycleRow;
+      };
+      cancel_account_deletion: {
+        Args: Record<PropertyKey, never>;
+        Returns: AccountLifecycleRow;
+      };
+      account_sync_allowed: {
+        Args: Record<PropertyKey, never>;
+        Returns: boolean;
+      };
+      claim_expired_account_deletions: {
+        Args: { p_batch_size: number };
+        Returns: { user_id: string }[];
+      };
+      release_expired_account_deletion_claim: {
+        Args: { p_user_id: string };
+        Returns: undefined;
+      };
       record_refund: {
         Args: {
           p_action: 'create' | 'update' | 'delete';

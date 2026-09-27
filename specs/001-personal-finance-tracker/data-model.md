@@ -28,6 +28,7 @@ Este es un modelo lógico de diseño, no un esquema SQL ni una migración. Postg
 | `deletion_due_at` | Vencimiento calculado en el servidor a 30 días calendario; null si no hay solicitud activa |
 | `deletion_canceled_at` | Momento de cancelación, si la solicitud se canceló |
 | `deletion_started_at` | Momento en que el worker inició el proceso final, para reintentos idempotentes |
+| `deletion_worker_lease_until` | Vencimiento de la reclamación temporal del worker; permite reintentar tras una interrupción sin ejecutar dos lotes concurrentes sobre la misma cuenta |
 
 El estado visible se deriva: activa si no hay solicitud pendiente; eliminación solicitada mientras el vencimiento no haya llegado; en proceso si el worker ya inició; eliminada cuando se eliminó la identidad Auth. Al pedir una nueva eliminación, la solicitud activa debe tener vencimiento propio y cancelable durante la ventana indicada por FR-016. Las políticas de sync comprueban `deletion_due_at` en el servidor, incluso si Cron todavía no ejecutó el borrado.
 

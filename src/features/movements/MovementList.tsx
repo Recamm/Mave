@@ -34,11 +34,13 @@ export function MovementList() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [actionError, setActionError] = useState(false);
+  const [expiredPendingPurged, setExpiredPendingPurged] = useState(false);
 
   useEffect(() => {
     let isCurrent = true;
     setIsLoading(true);
     setConflicts([]);
+    setExpiredPendingPurged(false);
 
     async function loadPage() {
       const cachedLookups = ownerId ? readOwnerLookups(ownerId) : null;
@@ -97,6 +99,16 @@ export function MovementList() {
       }
 
       if (syncResult.status === 'fulfilled') {
+        const discardedPendingCount = syncResult.value.reduce(
+          (count, result) => count + (result.discardedPendingCount ?? 0),
+          0,
+        );
+        if (discardedPendingCount > 0) {
+          setExpiredPendingPurged(true);
+          visibleMovements = visibleMovements.filter(
+            (movement) => movement.syncStatus === 'synced',
+          );
+        }
         visibleMovements = applySyncResults(visibleMovements, syncResult.value);
       }
 
@@ -141,6 +153,10 @@ export function MovementList() {
       isSynchronizing = true;
       try {
         const results = await syncEngine.synchronizePending(syncOwnerId);
+        const discardedPendingCount = results.reduce(
+          (count, result) => count + (result.discardedPendingCount ?? 0),
+          0,
+        );
         const [periodRecords, openConflicts] = await Promise.all([
           summaryService.listPeriodRecords(),
           syncEngine.listOpenConflicts(syncOwnerId),
@@ -154,7 +170,14 @@ export function MovementList() {
           return;
         }
 
-        setMovements(applySyncResults(visibleMovements, results));
+        if (discardedPendingCount > 0) {
+          setExpiredPendingPurged(true);
+        }
+        const visibleSyncedMovements =
+          discardedPendingCount > 0
+            ? visibleMovements.filter((movement) => movement.syncStatus === 'synced')
+            : visibleMovements;
+        setMovements(applySyncResults(visibleSyncedMovements, results));
         setRefunds(periodRecords.refunds);
         setConflicts(openConflicts);
       } catch {
@@ -229,6 +252,9 @@ export function MovementList() {
       ownerId,
       payload: input,
     });
+    if ((result.discardedPendingCount ?? 0) > 0) {
+      setExpiredPendingPurged(true);
+    }
 
     setMovements((current) => {
       if (!result.movement) {
@@ -261,6 +287,9 @@ export function MovementList() {
         ownerId,
         payload: null,
       });
+      if ((result.discardedPendingCount ?? 0) > 0) {
+        setExpiredPendingPurged(true);
+      }
       setMovements((current) =>
         result.movement
           ? [result.movement, ...current.filter((item) => item.id !== movement.id)].sort(sortByDate)
@@ -282,6 +311,9 @@ export function MovementList() {
 
     try {
       const result = await syncEngine.resolveMovementConflict(ownerId, conflict, revision.id);
+      if ((result.discardedPendingCount ?? 0) > 0) {
+        setExpiredPendingPurged(true);
+      }
       setMovements((current) => {
         const remaining = current.filter((movement) => movement.id !== result.movementId);
         return result.movement && !result.movement.deleted_at
@@ -327,6 +359,11 @@ export function MovementList() {
       {actionError ? (
         <FeedbackMessage tone="error">
           No se pudo completar la operación. Verifica el importe pendiente e inténtalo de nuevo.
+        </FeedbackMessage>
+      ) : null}
+      {expiredPendingPurged ? (
+        <FeedbackMessage tone="info">
+          Los movimientos pendientes se eliminaron de este dispositivo al vencer la solicitud.
         </FeedbackMessage>
       ) : null}
 

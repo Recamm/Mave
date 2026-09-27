@@ -1025,6 +1025,89 @@ a:focus-visible {
   color: #145538;
 }
 
+.account-settings-section {
+  padding: 1rem 0;
+  border-top: 2px solid var(--color-ink);
+}
+
+.account-settings-section h2 {
+  margin-bottom: 0.8rem;
+  font-size: 1.35rem;
+}
+
+.data-export-dialog {
+  width: min(calc(100% - 2rem), 30rem);
+  max-height: min(88dvh, 38rem);
+  margin: auto;
+  padding: 1.2rem;
+  border: 1px solid var(--color-line);
+  border-radius: 4px;
+  color: var(--color-ink);
+  background: var(--color-paper);
+  box-shadow: 0 18px 50px rgb(25 42 34 / 16%);
+}
+
+.data-export-dialog::backdrop {
+  background: rgb(25 42 34 / 42%);
+}
+
+.data-export-dialog__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 1px solid var(--color-line);
+}
+
+.data-export-dialog__heading h2 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+.data-export-dialog__actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.data-export-dialog__actions button {
+  min-width: 0;
+}
+
+.deletion-settings {
+  display: grid;
+  gap: 0.75rem;
+  max-width: 40rem;
+}
+
+.deletion-settings__status,
+.deletion-settings__deadline,
+.deletion-settings__warning {
+  margin: 0;
+}
+
+.deletion-settings__status {
+  font-weight: 650;
+}
+
+.deletion-settings__deadline {
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.deletion-settings__warning {
+  padding: 0.75rem;
+  border-left: 3px solid var(--color-line);
+}
+
+.deletion-settings__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
 .goal-list-panel {
   min-width: 0;
 }
@@ -1203,6 +1286,10 @@ a:focus-visible {
   .goals-page__layout {
     grid-template-columns: 1fr;
     gap: 1.75rem;
+  }
+
+  .data-export-dialog__actions {
+    grid-template-columns: 1fr;
   }
 
   .category-manager__list {

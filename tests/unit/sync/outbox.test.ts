@@ -109,4 +109,15 @@ describe('movement outbox', () => {
 
     expect(await store.list(ownerOne)).toEqual([]);
   });
+
+  it('purges every operation for one owner without affecting another owner', async () => {
+    const { store } = createStore();
+    await store.enqueue(createMutation(ownerOne));
+    await store.enqueue(createMutation(ownerOne, { operationId: blockedOperationId }));
+    await store.enqueue(createMutation(ownerTwo));
+
+    expect(await store.purgeOwner(ownerOne)).toBe(2);
+    expect(await store.list(ownerOne)).toEqual([]);
+    expect(await store.list(ownerTwo)).toHaveLength(1);
+  });
 });

@@ -127,6 +127,26 @@ export function createOutboxStore({ databaseName = defaultDatabaseName }: Outbox
       const database = await getDatabase();
       await database.delete('operations', [ownerId, operationId]);
     },
+
+    async purgeOwner(ownerId: string): Promise<number> {
+      if (!ownerId) {
+        throw new Error('Outbox owner is required.');
+      }
+
+      const database = await getDatabase();
+      const transaction = database.transaction('operations', 'readwrite');
+      let cursor = await transaction.store.index('by-owner').openCursor(ownerId);
+      let deletedCount = 0;
+
+      while (cursor) {
+        await cursor.delete();
+        deletedCount += 1;
+        cursor = await cursor.continue();
+      }
+
+      await transaction.done;
+      return deletedCount;
+    },
   };
 }
 

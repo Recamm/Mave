@@ -26,6 +26,7 @@ Las siguientes operaciones son contratos de comportamiento, no una exigencia de 
 | `record_transfer` | ID idempotente, origen, destino, importe y fecha | Inserta una sola transferencia si ambas cuentas pertenecen a la sesión, son distintas y tienen la misma moneda. Un error no deja un débito sin crédito. |
 | `record_refund` | ID idempotente, gasto, importe, fecha de recepción y acción | Verifica que el padre sea un gasto propio y que la suma de devoluciones activas no supere el importe no devuelto. Serializa cambios por gasto. Moneda, categoría y cuenta se heredan del gasto. |
 | `resolve_movement_conflict` | Conflicto propio y revisión conservada elegida | En una transacción aplica como máximo una revisión al movimiento canónico, incrementa su versión y cierra el conflicto. Los reintentos no vuelven a aplicar la resolución. |
+| `account_sync_allowed` | Sin parámetros de propietario | Consulta el ciclo propio con el reloj del servidor; permite purgar una outbox compuesta solo por conflictos sin confiar en la hora del dispositivo. |
 | `request_account_deletion` | Solicitud autenticada | Registra la fecha autoritativa del servidor, estado y vencimiento a 30 días calendario; no borra datos durante la gracia. La misma solicitud repetida no crea ventanas superpuestas. |
 | `cancel_account_deletion` | Solicitud propia aún dentro de la gracia | Cancela la solicitud antes del vencimiento y restaura el estado activo. Una solicitud vencida no puede cancelarse para reabrir sync. |
 

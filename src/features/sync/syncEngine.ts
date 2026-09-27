@@ -20,6 +20,7 @@ export type MovementChange = {
 
 export type SyncOutcome = {
   conflictId: string | null;
+  discardedPendingCount?: number;
   movementId: string;
   movement: Movement | null;
   operationId: string;
@@ -75,11 +76,37 @@ export function createSyncEngine({
     }
 
     const entries = await outbox.list(ownerId);
+    if (entries.length === 0) {
+      return [];
+    }
+
+    const previouslyBlocked = entries.find(
+      (entry) => entry.status === 'blocked' && entry.lastErrorCode === 'account_expired',
+    );
+    if (previouslyBlocked) {
+      return [await purgeExpiredOutbox(previouslyBlocked)];
+    }
+
+    const pendingEntries = entries.filter(
+      (entry) =>
+        entry.status === 'pending' || entry.status === 'retry' || entry.status === 'sending',
+    );
+    if (pendingEntries.length === 0) {
+      const accountSyncAllowed = await checkAccountSyncAllowed(ownerId);
+      if (accountSyncAllowed === false) {
+        const firstEntry = entries[0];
+        return firstEntry ? [await purgeExpiredOutbox(firstEntry)] : [];
+      }
+      return [];
+    }
+
     const outcomes: SyncOutcome[] = [];
 
-    for (const entry of entries) {
-      if (entry.status === 'pending' || entry.status === 'retry' || entry.status === 'sending') {
-        outcomes.push(await synchronizeEntry(entry));
+    for (const entry of pendingEntries) {
+      const outcome = await synchronizeEntry(entry);
+      outcomes.push(outcome);
+      if (outcome.status === 'blocked') {
+        break;
       }
     }
 
@@ -174,10 +201,16 @@ export function createSyncEngine({
     });
 
     if (error) {
+      if (error.code === '42501' && (await checkAccountSyncAllowed(ownerId)) === false) {
+        return purgeExpiredOutbox({ movementId: conflict.movementId, operationId, ownerId });
+      }
       throw error;
     }
 
     const result = data as unknown as { movement?: unknown; status: string };
+    if (result.status === 'blocked') {
+      return purgeExpiredOutbox({ movementId: conflict.movementId, operationId, ownerId });
+    }
     if (result.status !== 'resolved' || !result.movement) {
       throw new Error('Conflict resolution returned an invalid result.');
     }
@@ -233,29 +266,40 @@ export function createSyncEngine({
 
     await outbox.updateStatus(entry.ownerId, entry.operationId, 'sending');
 
+    let response;
     try {
-      const { data, error } = await client.rpc('apply_movement_change', {
+      response = await client.rpc('apply_movement_change', {
         p_action: entry.action,
         p_expected_version: entry.expectedVersion,
         p_movement_id: entry.movementId,
         p_operation_id: entry.operationId,
         p_payload: toJsonPayload(entry.payload),
       });
+    } catch {
+      await outbox.updateStatus(entry.ownerId, entry.operationId, 'retry', 'network');
+      return outcomeFromEntry({ ...entry, status: 'retry', lastErrorCode: 'network' });
+    }
 
-      if (error) {
-        if (error.code === '42501') {
-          await outbox.updateStatus(entry.ownerId, entry.operationId, 'blocked', 'account_expired');
-          return outcomeFromEntry({
-            ...entry,
-            status: 'blocked',
-            lastErrorCode: 'account_expired',
-          });
+    const { data, error } = response;
+    if (error) {
+      if (error.code === '42501') {
+        if ((await checkAccountSyncAllowed(entry.ownerId)) === false) {
+          return purgeExpiredOutbox(entry);
         }
 
-        throw error;
+        await outbox.updateStatus(entry.ownerId, entry.operationId, 'blocked', 'authorization');
+        return outcomeFromEntry({ ...entry, status: 'blocked', lastErrorCode: 'authorization' });
       }
+      await outbox.updateStatus(entry.ownerId, entry.operationId, 'retry', 'network');
+      return outcomeFromEntry({ ...entry, status: 'retry', lastErrorCode: 'network' });
+    }
 
-      const result = data as unknown as RpcResult;
+    const result = data as unknown as RpcResult;
+    if (result.status === 'blocked') {
+      return purgeExpiredOutbox(entry);
+    }
+
+    try {
       if (result.status === 'applied') {
         await outbox.complete(entry.ownerId, entry.operationId);
         const movement = result.movement ? mapRpcMovement(result.movement, 'synced') : null;
@@ -280,16 +324,39 @@ export function createSyncEngine({
         };
       }
 
-      if (result.status === 'blocked') {
-        await outbox.updateStatus(entry.ownerId, entry.operationId, 'blocked', 'account_expired');
-        return outcomeFromEntry({ ...entry, status: 'blocked', lastErrorCode: 'account_expired' });
-      }
-
       throw new Error('Movement sync returned an unknown result.');
     } catch {
       await outbox.updateStatus(entry.ownerId, entry.operationId, 'retry', 'network');
       return outcomeFromEntry({ ...entry, status: 'retry', lastErrorCode: 'network' });
     }
+  }
+
+  async function checkAccountSyncAllowed(ownerId: string): Promise<boolean | null> {
+    const client = await getClientForOwner(ownerId);
+    if (!client) {
+      return null;
+    }
+
+    const { data, error } = await client.rpc('account_sync_allowed', {});
+    if (error) {
+      throw error;
+    }
+
+    return data;
+  }
+
+  async function purgeExpiredOutbox(
+    entry: Pick<OutboxEntry, 'movementId' | 'operationId' | 'ownerId'>,
+  ): Promise<SyncOutcome> {
+    const discardedPendingCount = await outbox.purgeOwner(entry.ownerId);
+    return {
+      conflictId: null,
+      discardedPendingCount,
+      movementId: entry.movementId,
+      movement: null,
+      operationId: entry.operationId,
+      status: 'blocked',
+    };
   }
 
   return {
