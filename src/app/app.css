@@ -67,6 +67,16 @@
 }
 * {
   box-sizing: border-box;
+  scrollbar-width: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+}
+
+html,
+body {
+  overflow-x: clip;
 }
 
 body {
@@ -596,6 +606,7 @@ a:focus-visible {
   color: var(--color-ink);
   background: var(--color-canvas);
   overflow-y: auto;
+  scrollbar-width: none;
 }
 
 .movement-dialog[open] {
@@ -1941,7 +1952,7 @@ a:focus-visible {
   }
 
   .goals-page__layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 1.75rem;
   }
 

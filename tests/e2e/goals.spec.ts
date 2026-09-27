@@ -224,8 +224,17 @@ test('tracks goal contributions without creating movements or changing accounts'
     .click();
   await expect(page.getByRole('heading', { name: 'Inicio' })).toBeVisible();
 
+  await page.setViewportSize({ width: 320, height: 720 });
   await page.getByRole('link', { name: 'Metas' }).click();
   await expect(page.getByRole('heading', { name: 'Metas de ahorro' })).toBeVisible();
+  await expect(page.locator('html')).toHaveCSS('scrollbar-width', 'none');
+  await expect(page.locator('body')).toHaveCSS('overflow-x', 'clip');
+  const verticalScrollY = await page.evaluate(() => {
+    window.scrollTo(0, document.documentElement.scrollHeight);
+    return window.scrollY;
+  });
+  expect(verticalScrollY).toBeGreaterThan(0);
+  await page.evaluate(() => window.scrollTo(0, 0));
 
   const createForm = page.getByRole('form', { name: 'Crear meta de ahorro' });
   await createForm.getByLabel('Nombre de la meta').fill('Viaje al sur');
@@ -237,12 +246,17 @@ test('tracks goal contributions without creating movements or changing accounts'
   expect(backend.goals).toHaveLength(0);
 
   await createForm.getByLabel('Importe objetivo').fill('50000.00');
+  await createForm.getByLabel('Fecha objetivo (opcional)').fill('2026-12-31');
   await createForm.getByRole('button', { name: 'Crear meta' }).click();
 
   const goals = page.getByRole('list', { name: 'Metas de ahorro' });
   const goal = goals.getByRole('listitem').filter({ hasText: 'Viaje al sur' });
   await expect(goal).toContainText('ARS 50.000,00');
   await expect(goal).toContainText('ARS 0,00');
+  await expect(goal).toContainText('Fecha objetivo');
+  expect(await page.locator('html').evaluate((element) => element.scrollWidth)).toBeLessThanOrEqual(
+    320,
+  );
 
   const contributionForm = goal.getByRole('form', { name: 'Registrar aporte' });
   await contributionForm.getByLabel('Importe del aporte').fill('0');
@@ -263,7 +277,7 @@ test('tracks goal contributions without creating movements or changing accounts'
   await expect(goal).toContainText('ARS 1.250,60');
   expect(backend.goals).toHaveLength(1);
   expect(backend.goals[0]?.target_amount).toBe('50000');
-  expect(backend.goals[0]?.target_date).toBeNull();
+  expect(backend.goals[0]?.target_date).toBe('2026-12-31');
   expect(backend.contributions).toHaveLength(2);
   expect(backend.contributions[0]?.amount_text).toBe('1250.5');
   expect(backend.contributions[1]?.amount_text).toBe('0.1');

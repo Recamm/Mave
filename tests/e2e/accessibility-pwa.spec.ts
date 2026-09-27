@@ -4,6 +4,14 @@ import { expect, test } from '@playwright/test';
 test('provides an installable app shell and icon assets', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Mave' })).toBeVisible();
+  await expect(page.locator('meta[name="apple-mobile-web-app-capable"]')).toHaveAttribute(
+    'content',
+    'yes',
+  );
+  await expect(page.locator('meta[name="apple-mobile-web-app-title"]')).toHaveAttribute(
+    'content',
+    'Mave',
+  );
 
   const manifestHref = await page.locator('link[rel="manifest"]').getAttribute('href');
   expect(manifestHref).not.toBeNull();
@@ -35,7 +43,10 @@ test('provides an installable app shell and icon assets', async ({ page }) => {
     expect(image.readUInt32BE(20)).toBe(expectedSize);
   }
 
-  const appleIconHref = await page.locator('link[rel="apple-touch-icon"]').getAttribute('href');
+  const appleIconLink = page.locator('link[rel="apple-touch-icon"]');
+  await expect(appleIconLink).toHaveAttribute('sizes', '180x180');
+  await expect(appleIconLink).toHaveAttribute('type', 'image/png');
+  const appleIconHref = await appleIconLink.getAttribute('href');
   expect(appleIconHref).not.toBeNull();
   const appleIcon = await page.request.get(appleIconHref ?? './icons/apple-touch-icon.png');
   expect(appleIcon.ok()).toBe(true);
