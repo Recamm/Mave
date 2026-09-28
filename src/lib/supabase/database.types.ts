@@ -327,6 +327,7 @@ export type Database = {
           category_id: string;
           created_at: string;
           currency: 'ARS' | 'USD';
+          deleted_at: string | null;
           financial_account_id: string | null;
           id: string;
           interval_count: number;
@@ -349,6 +350,7 @@ export type Database = {
           category_id: string;
           created_at?: string;
           currency: 'ARS' | 'USD';
+          deleted_at?: string | null;
           financial_account_id?: string | null;
           id?: string;
           interval_count: number;
@@ -371,6 +373,7 @@ export type Database = {
           category_id?: string;
           created_at?: string;
           currency?: 'ARS' | 'USD';
+          deleted_at?: string | null;
           financial_account_id?: string | null;
           id?: string;
           interval_count?: number;
@@ -399,6 +402,7 @@ export type Database = {
           occurrence_index: number;
           paid_on: string;
           recurring_movement_id: string;
+          reversed_at: string | null;
           user_id: string;
         };
         Insert: {
@@ -410,6 +414,7 @@ export type Database = {
           occurrence_index: number;
           paid_on: string;
           recurring_movement_id: string;
+          reversed_at?: string | null;
           user_id?: string;
         };
         Update: {
@@ -421,6 +426,7 @@ export type Database = {
           occurrence_index?: number;
           paid_on?: string;
           recurring_movement_id?: string;
+          reversed_at?: string | null;
           user_id?: string;
         };
         Relationships: [];
@@ -533,6 +539,10 @@ export type Database = {
           p_paid_on: string;
           p_recurring_movement_id: string;
         };
+        Returns: Json;
+      };
+      undo_recurring_movement_payment: {
+        Args: { p_movement_id: string; p_operation_id: string };
         Returns: Json;
       };
       recurring_movement_occurrence_on: {

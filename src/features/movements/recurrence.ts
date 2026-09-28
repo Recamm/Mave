@@ -1,5 +1,5 @@
 export type RecurrenceUnit = 'day' | 'week' | 'month' | 'year';
-export type ReminderFrequency = 'once' | 'daily';
+export type ReminderFrequency = 'once' | 'daily' | 'custom';
 
 export const reminderLeadOptions = [
   { days: 1, label: '1 día antes' },
@@ -14,6 +14,7 @@ export type RecurrenceDraft = {
   intervalUnit: string;
   reminderDaysBefore: string;
   reminderEnabled: boolean;
+  reminderEveryDays: string;
   reminderFrequency: ReminderFrequency;
 };
 
@@ -39,6 +40,7 @@ export function createRecurrenceDraft(): RecurrenceDraft {
     intervalUnit: 'month',
     reminderDaysBefore: '7',
     reminderEnabled: false,
+    reminderEveryDays: '1',
     reminderFrequency: 'daily',
   };
 }
@@ -60,24 +62,21 @@ export function normalizeRecurrenceSettings(draft: RecurrenceDraft): RecurrenceS
     'La frecuencia debe estar entre 1 y 365.',
   );
   const reminderDaysBefore = draft.reminderEnabled
-    ? parseWholeNumber(draft.reminderDaysBefore, 1, 30, 'Selecciona una anticipación válida.')
+    ? parseWholeNumber(draft.reminderDaysBefore, 0, 365, 'Selecciona una anticipación válida.')
     : 7;
 
-  if (
-    draft.reminderEnabled &&
-    !reminderLeadOptions.some((option) => option.days === reminderDaysBefore)
-  ) {
-    throw new RecurrenceInputError('Selecciona una anticipación válida.');
-  }
-  if (
-    draft.reminderEnabled &&
-    draft.reminderFrequency !== 'once' &&
-    draft.reminderFrequency !== 'daily'
-  ) {
+  if (!['once', 'daily', 'custom'].includes(draft.reminderFrequency)) {
     throw new RecurrenceInputError('Selecciona la frecuencia del aviso.');
   }
 
   const reminderFrequency = draft.reminderEnabled ? draft.reminderFrequency : 'daily';
+  const reminderEveryDays = !draft.reminderEnabled
+    ? 1
+    : reminderFrequency === 'once'
+      ? reminderDaysBefore + 1
+      : reminderFrequency === 'daily'
+        ? 1
+        : parseWholeNumber(draft.reminderEveryDays, 1, 365, 'El intervalo del aviso no es válido.');
 
   return {
     intervalCount,
@@ -85,8 +84,15 @@ export function normalizeRecurrenceSettings(draft: RecurrenceDraft): RecurrenceS
     reminderDaysBefore,
     reminderEnabled: draft.reminderEnabled,
     reminderFrequency,
-    reminderEveryDays: reminderFrequency === 'once' ? reminderDaysBefore + 1 : 1,
+    reminderEveryDays,
   };
+}
+
+export function getReminderLeadLabel(daysBefore: number): string {
+  return (
+    reminderLeadOptions.find((option) => option.days === daysBefore)?.label ??
+    (daysBefore === 0 ? 'El día del vencimiento' : `${daysBefore} días antes`)
+  );
 }
 
 export function getReminderFrequency(
@@ -134,6 +140,28 @@ export function getReminderStartDate(dueOn: string, daysBefore: number): string 
   const { year, month, day } = parseCivilDate(dueOn);
   const date = new Date(Date.UTC(year, month - 1, day - daysBefore));
   return formatCivilDate(date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate());
+}
+
+export function isRecurringMovementDue(
+  dueOn: string,
+  timeZone: string,
+  instant = new Date(),
+): boolean {
+  return dueOn <= getCivilDateInTimeZone(timeZone, instant);
+}
+
+export function getCivilDateInTimeZone(timeZone: string, instant = new Date()): string {
+  const todayParts = new Intl.DateTimeFormat('en', {
+    day: '2-digit',
+    month: '2-digit',
+    timeZone,
+    year: 'numeric',
+  }).formatToParts(instant);
+  return formatCivilDate(
+    Number(todayParts.find((part) => part.type === 'year')?.value),
+    Number(todayParts.find((part) => part.type === 'month')?.value),
+    Number(todayParts.find((part) => part.type === 'day')?.value),
+  );
 }
 
 function parseCivilDate(value: string): { day: number; month: number; year: number } {

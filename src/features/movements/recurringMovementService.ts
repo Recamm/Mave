@@ -5,6 +5,8 @@ import type { MovementInput } from './movementInput';
 import { getOccurrenceDate, type RecurrenceUnit } from './recurrence';
 
 type RecurringMovementRow = Database['public']['Tables']['recurring_movements']['Row'];
+type RecurringMovementPaymentRow =
+  Database['public']['Tables']['recurring_movement_payments']['Row'];
 type MovementClient = NonNullable<ReturnType<typeof getSupabaseClient>>;
 type MovementClientProvider = () => MovementClient | null;
 
@@ -12,6 +14,11 @@ export type RecurringMovement = Omit<RecurringMovementRow, 'amount'> & {
   amount: string;
   nextDueOn: string;
 };
+
+export type RecurringMovementPayment = Pick<
+  RecurringMovementPaymentRow,
+  'due_on' | 'movement_id' | 'occurrence_index' | 'paid_on' | 'recurring_movement_id'
+>;
 
 export type RecurringMovementInput = MovementInput & {
   intervalCount: number;
@@ -23,7 +30,7 @@ export type RecurringMovementInput = MovementInput & {
 };
 
 const recurringMovementFields =
-  'active,amount,amount_text,category_id,created_at,currency,financial_account_id,id,interval_count,interval_unit,kind,last_notified_on,note,occurrence_index,reminder_days_before,reminder_enabled,reminder_every_days,starts_on,time_zone,updated_at,user_id' as const;
+  'active,amount,amount_text,category_id,created_at,currency,deleted_at,financial_account_id,id,interval_count,interval_unit,kind,last_notified_on,note,occurrence_index,reminder_days_before,reminder_enabled,reminder_every_days,starts_on,time_zone,updated_at,user_id' as const;
 
 function mapRecurringMovement(row: RecurringMovementRow): RecurringMovement {
   return {
@@ -54,6 +61,7 @@ export function createRecurringMovementService(
       const { data, error } = await requireClient()
         .from('recurring_movements')
         .select(recurringMovementFields)
+        .is('deleted_at', null)
         .order('active', { ascending: false })
         .order('starts_on', { ascending: true });
 
@@ -62,6 +70,20 @@ export function createRecurringMovementService(
       }
 
       return data.map(mapRecurringMovement);
+    },
+
+    async listPayments(): Promise<RecurringMovementPayment[]> {
+      const { data, error } = await requireClient()
+        .from('recurring_movement_payments')
+        .select('due_on,movement_id,occurrence_index,paid_on,recurring_movement_id')
+        .is('reversed_at', null)
+        .order('paid_on', { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      return data;
     },
 
     async create(input: RecurringMovementInput): Promise<RecurringMovement> {
@@ -93,11 +115,62 @@ export function createRecurringMovementService(
       return mapRecurringMovement(data);
     },
 
+    async update(id: string, input: RecurringMovementInput): Promise<RecurringMovement> {
+      const { data, error } = await requireClient()
+        .from('recurring_movements')
+        .update({
+          amount: input.amount,
+          category_id: input.categoryId,
+          currency: input.currency,
+          financial_account_id: input.financialAccountId,
+          interval_count: input.intervalCount,
+          interval_unit: input.intervalUnit,
+          kind: input.kind,
+          note: input.note,
+          reminder_days_before: input.reminderDaysBefore,
+          reminder_enabled: input.reminderEnabled,
+          reminder_every_days: input.reminderEveryDays,
+          starts_on: input.occurredOn,
+          time_zone: input.timeZone,
+        })
+        .eq('id', id)
+        .is('deleted_at', null)
+        .select(recurringMovementFields)
+        .maybeSingle();
+
+      if (error) {
+        throw error;
+      }
+      if (!data) {
+        throw new Error('Recurring movement is unavailable.');
+      }
+
+      return mapRecurringMovement(data);
+    },
+
+    async delete(id: string): Promise<void> {
+      const { data, error } = await requireClient()
+        .from('recurring_movements')
+        .update({ active: false, deleted_at: new Date().toISOString(), reminder_enabled: false })
+        .eq('id', id)
+        .is('deleted_at', null)
+        .select('id')
+        .maybeSingle();
+
+      if (error) {
+        throw error;
+      }
+      if (!data) {
+        throw new Error('Recurring movement is unavailable.');
+      }
+    },
+
     async setActive(id: string, active: boolean): Promise<RecurringMovement> {
       const { data, error } = await requireClient()
         .from('recurring_movements')
         .update({ active })
         .eq('id', id)
+        .is('deleted_at', null)
         .select(recurringMovementFields)
         .maybeSingle();
 
@@ -116,6 +189,7 @@ export function createRecurringMovementService(
         .from('recurring_movements')
         .update({ reminder_enabled: reminderEnabled })
         .eq('id', id)
+        .is('deleted_at', null)
         .select(recurringMovementFields)
         .maybeSingle();
 
@@ -158,11 +232,42 @@ export function createRecurringMovementService(
       if (result.status === 'inactive') {
         throw new Error('Esta recurrencia está pausada.');
       }
+      if (result.status === 'not-due') {
+        throw new Error('Todavía no llegó la fecha de este pago.');
+      }
+      if (result.status === 'future-date') {
+        throw new Error('La fecha de pago no puede estar en el futuro.');
+      }
       if (result.status !== 'applied' && result.status !== 'already-paid') {
         throw new Error('No se pudo registrar el pago recurrente.');
       }
 
       return mapPaidMovement(result.movement);
+    },
+
+    async undoPayment(movementId: string, operationId: string): Promise<void> {
+      const { data, error } = await requireClient().rpc('undo_recurring_movement_payment', {
+        p_movement_id: movementId,
+        p_operation_id: operationId,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      const result = data as unknown as { status?: string };
+      if (result.status === 'blocked') {
+        throw new Error('La cuenta no admite cambios hasta que se resuelva su eliminación.');
+      }
+      if (result.status === 'unavailable') {
+        throw new Error('El pago recurrente ya no está disponible.');
+      }
+      if (result.status === 'conflict') {
+        throw new Error('Resuelve el conflicto de sincronización antes de deshacer este pago.');
+      }
+      if (result.status !== 'undone' && result.status !== 'already-undone') {
+        throw new Error('No se pudo deshacer el pago recurrente.');
+      }
     },
   };
 }

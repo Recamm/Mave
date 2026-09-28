@@ -101,7 +101,8 @@ async function installSupabaseMock(page: Page): Promise<BackendState> {
     if (
       (url.pathname === '/rest/v1/financial_accounts' ||
         url.pathname === '/rest/v1/movements' ||
-        url.pathname === '/rest/v1/refunds') &&
+        url.pathname === '/rest/v1/refunds' ||
+        url.pathname === '/rest/v1/recurring_movements') &&
       request.method() === 'GET'
     ) {
       await respond([]);

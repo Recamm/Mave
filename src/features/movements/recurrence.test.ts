@@ -3,7 +3,9 @@ import {
   createRecurrenceDraft,
   getOccurrenceDate,
   getReminderFrequency,
+  getReminderLeadLabel,
   getReminderStartDate,
+  isRecurringMovementDue,
   normalizeRecurrenceSettings,
   reminderLeadOptions,
   RecurrenceInputError,
@@ -23,6 +25,21 @@ describe('recurrence dates', () => {
   it('calculates weekly intervals and reminder lead dates as calendar days', () => {
     expect(getOccurrenceDate('2026-09-27', 2, 1, 'week')).toBe('2026-10-11');
     expect(getReminderStartDate('2026-10-11', 7)).toBe('2026-10-04');
+  });
+
+  it('enables a recurring payment at midnight in its configured timezone', () => {
+    const beforeLocalMidnight = new Date('2026-09-28T02:59:00.000Z');
+    const afterLocalMidnight = new Date('2026-09-28T03:00:00.000Z');
+
+    expect(
+      isRecurringMovementDue('2026-09-28', 'America/Argentina/Buenos_Aires', beforeLocalMidnight),
+    ).toBe(false);
+    expect(
+      isRecurringMovementDue('2026-09-28', 'America/Argentina/Buenos_Aires', afterLocalMidnight),
+    ).toBe(true);
+    expect(
+      isRecurringMovementDue('2026-09-27', 'America/Argentina/Buenos_Aires', beforeLocalMidnight),
+    ).toBe(true);
   });
 
   it('rejects invalid dates and intervals', () => {
@@ -96,6 +113,35 @@ describe('recurrence dates', () => {
     ]);
   });
 
+  it('preserves legacy reminder lead times supported by the database', () => {
+    const sameDaySettings = normalizeRecurrenceSettings({
+      ...createRecurrenceDraft(),
+      reminderEnabled: true,
+      reminderDaysBefore: '0',
+      reminderFrequency: 'once',
+    });
+    const customSettings = normalizeRecurrenceSettings({
+      ...createRecurrenceDraft(),
+      reminderEnabled: true,
+      reminderDaysBefore: '2',
+      reminderEveryDays: '5',
+      reminderFrequency: 'custom',
+    });
+
+    expect(sameDaySettings).toMatchObject({
+      reminderDaysBefore: 0,
+      reminderFrequency: 'once',
+      reminderEveryDays: 1,
+    });
+    expect(customSettings).toMatchObject({
+      reminderDaysBefore: 2,
+      reminderFrequency: 'custom',
+      reminderEveryDays: 5,
+    });
+    expect(getReminderLeadLabel(0)).toBe('El día del vencimiento');
+    expect(getReminderLeadLabel(2)).toBe('2 días antes');
+  });
+
   it('rejects out-of-range recurrence and reminder intervals', () => {
     expect(() =>
       normalizeRecurrenceSettings({ ...createRecurrenceDraft(), intervalCount: '0' }),
@@ -104,7 +150,7 @@ describe('recurrence dates', () => {
       normalizeRecurrenceSettings({
         ...createRecurrenceDraft(),
         reminderEnabled: true,
-        reminderDaysBefore: '2',
+        reminderDaysBefore: '366',
       }),
     ).toThrow(RecurrenceInputError);
   });

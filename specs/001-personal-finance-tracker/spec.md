@@ -18,7 +18,7 @@
 - Q: ¿La primera versión debe permitir que cada persona gestione categorías propias además de las predeterminadas? (FR-003) → A: sí; puede crear, renombrar y archivar categorías, conservando las asignaciones históricas.
 - Q: ¿En qué formato(s) debe poder exportar la persona sus datos? (FR-015) → A: CSV organizado para planillas y JSON que conserva las relaciones entre los datos.
 
-## User Scenarios & Testing *(mandatory)*
+## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - Registrar movimientos propios rápidamente (Priority: P1)
 
@@ -136,7 +136,7 @@ Una persona añade Mave a la pantalla de inicio de Safari en iPhone o la abre de
 
 ### User Story 8 - Programar movimientos recurrentes (Priority: P2)
 
-Una persona programa ingresos o gastos que se repiten, recibe avisos opcionales antes del vencimiento y marca cada ocurrencia como pagada o cobrada para registrar el movimiento y avanzar al siguiente período.
+Una persona administra ingresos o gastos que se repiten desde Gestión. Inicio muestra las ocurrencias activas que todavía no se pagaron o cobraron, incluidas las futuras, pero solo permite confirmarlas cuando llega su fecha local. Cada confirmación crea un movimiento en el historial; desde allí la persona puede deshacerla.
 
 **Why this priority**: Los pagos y cobros periódicos se olvidan con facilidad; registrarlos una sola vez reduce trabajo repetitivo sin crear movimientos contables antes de que ocurran.
 
@@ -144,10 +144,13 @@ Una persona programa ingresos o gastos que se repiten, recibe avisos opcionales 
 
 **Acceptance Scenarios**:
 
-1. **Given** una persona autenticada, **When** define ingreso o gasto, importe, categoría, vencimiento inicial y frecuencia, **Then** la recurrencia queda privada y visible en su agenda sin crear todavía un movimiento en el historial.
+1. **Given** una persona autenticada, **When** define ingreso o gasto, importe, categoría, vencimiento inicial y frecuencia, **Then** la recurrencia queda privada y visible en la agenda de Gestión sin crear todavía un movimiento en el historial.
 2. **Given** una recurrencia con plazo de aviso de una semana, **When** la persona elige una frecuencia, **Then** puede recibir un único aviso al comenzar esa semana o uno diario hasta el vencimiento, a las 09:00 de la zona horaria elegida al crear la regla.
-3. **Given** una ocurrencia pendiente, **When** la persona la marca pagada o cobrada, **Then** Mave registra un único movimiento en la fecha real indicada, termina los avisos de esa ocurrencia y calcula el próximo vencimiento desde la fecha inicial, no desde la fecha de pago.
-4. **Given** una persona que pausa una recurrencia o desactiva sus avisos, **When** vence su siguiente ciclo, **Then** Mave no genera avisos mientras la regla o los avisos sigan desactivados; la recurrencia puede reanudarse.
+3. **Given** una ocurrencia activa sin pagar o cobrar, **When** aparece en Inicio antes de vencer, **Then** se muestra pendiente y la acción de confirmar permanece deshabilitada hasta el día local del vencimiento; el servidor rechaza igualmente cualquier confirmación anticipada o con fecha real futura.
+4. **Given** una ocurrencia vencida pendiente, **When** la persona la marca pagada o cobrada, **Then** Mave registra un único movimiento en el historial, termina los avisos de esa ocurrencia, la oculta de Inicio sin quitar la regla de Gestión y la vuelve a mostrar al vencer la siguiente ocurrencia.
+5. **Given** una regla recurrente en Gestión, **When** la persona edita o elimina la regla, **Then** los cambios se aplican solo a la regla y su eliminación lógica la oculta de las agendas sin borrar pagos ni movimientos ya registrados.
+6. **Given** un pago o cobro recurrente visible en el historial, **When** la persona lo deshace, **Then** Mave elimina el movimiento del ledger con la operación versionada existente, conserva el registro de pago como revertido y reabre la ocurrencia solo si era la más reciente y su regla sigue vigente; una reversión repetida no lo elimina de nuevo.
+7. **Given** una persona que pausa una recurrencia o desactiva sus avisos, **When** vence su siguiente ciclo, **Then** Mave no genera avisos mientras la regla o los avisos sigan desactivados; la recurrencia puede reanudarse.
 
 **Requirements**: FR-028.
 
@@ -164,9 +167,11 @@ Una persona programa ingresos o gastos que se repiten, recibe avisos opcionales 
 - Al cerrar sesión con movimientos pendientes, estos siguen asociados a la cuenta original y no se revelan a otra persona.
 - Durante los 30 días calendario de gracia, los movimientos pendientes pueden sincronizarse; después del vencimiento no se aceptan sincronizaciones tardías y el dispositivo elimina esos datos al reconectarse. Un dispositivo que no vuelva a conectarse puede conservar datos locales hasta que se borren sus datos.
 - Las recurrencias y sus pagos requieren conexión; los movimientos puntuales mantienen el flujo offline existente. Si Push no está disponible o permitido, la recurrencia sigue visible en la agenda, pero no se garantiza el aviso del dispositivo.
+- Inicio muestra ocurrencias activas sin confirmar, aunque todavía sean futuras. Después de marcar una como pagada o cobrada, la regla permanece en Gestión y no reaparece en Inicio hasta el próximo vencimiento; la acción de confirmar se habilita en la zona horaria de la regla y la RPC vuelve a validar la fecha con el reloj del servidor.
+- Una regla eliminada se oculta de Inicio y Gestión, pero sus pagos y movimientos conservan el historial necesario para consultar o deshacer una confirmación previa.
 - Una recurrencia mensual cuyo día inicial no exista en un mes más corto vence el último día de ese mes y vuelve al día original en los siguientes meses.
 
-## Requirements *(mandatory)*
+## Requirements _(mandatory)_
 
 ### Functional Requirements
 
@@ -197,7 +202,7 @@ Una persona programa ingresos o gastos que se repiten, recibe avisos opcionales 
 - **FR-025**: La experiencia MUST adaptarse a pantallas angostas y amplias, permitir navegación por teclado y tecnologías de asistencia, mantener foco visible, cumplir contraste WCAG 2.2 AA y expresar estados sin depender únicamente del color.
 - **FR-026**: La persona MUST poder registrar, consultar, editar y borrar devoluciones parciales o totales vinculadas a un gasto propio. La devolución MUST tener importe positivo, moneda y categoría iguales a las del gasto, y fecha de recepción; su importe MUST NOT superar el importe del gasto aún no devuelto. La devolución MUST reducir los gastos del período en que se recibe y MUST NOT contarse como ingreso. Si el gasto tiene cuenta financiera asociada, la devolución MUST acreditarse a esa misma cuenta; si no, MUST afectar solo los totales generales.
 - **FR-027**: Mave MUST ofrecer un catálogo inicial de categorías y permitir que cada persona cree, renombre y archive categorías en su espacio privado. Una categoría archivada MUST NOT ofrecerse para movimientos nuevos; los movimientos existentes MUST conservar su asociación y mostrarla en el historial y los resúmenes. Las categorías de una persona MUST NOT ser visibles ni asignables por otra.
-- **FR-028**: La persona MUST poder crear ingresos o gastos recurrentes con importe, moneda, categoría, cuenta opcional, nota opcional, fecha inicial y frecuencia configurable por cantidad de días, semanas, meses o años. La recurrencia MUST NOT crear un movimiento contable antes de marcar una ocurrencia como pagada o cobrada. MUST poder elegir un plazo de aviso (1 día, 3 días, 1 semana, 2 semanas o 1 mes) y recibir un único aviso al comenzar ese plazo o uno diario hasta el vencimiento, a las 09:00 locales. Los avisos MUST detenerse al registrar el pago, pausar la recurrencia o desactivar avisos. Marcar una ocurrencia MUST crear un único movimiento con la fecha real de pago/cobro y avanzar el calendario anclado en la fecha inicial. Los datos recurrentes MUST pertenecer solo a su propietario.
+- **FR-028**: La persona MUST poder crear, consultar, editar, pausar, reanudar y eliminar lógicamente ingresos o gastos recurrentes con importe, moneda, categoría, cuenta opcional, nota opcional, fecha inicial y frecuencia configurable por cantidad de días, semanas, meses o años. La agenda completa MUST estar disponible en Gestión; Inicio MUST mostrar ocurrencias activas sin confirmar, incluso si vencen en el futuro. Después de confirmar una ocurrencia, la regla MUST permanecer en Gestión y MUST NOT reaparecer en Inicio hasta el siguiente vencimiento. La acción de confirmar MUST permanecer deshabilitada hasta la fecha local de vencimiento y el servidor MUST rechazar fechas de vencimiento o pago futuras. La recurrencia MUST NOT crear un movimiento contable antes de confirmar la ocurrencia. MUST poder elegir un plazo de aviso (1 día, 3 días, 1 semana, 2 semanas o 1 mes) y recibir un único aviso al comenzar ese plazo o uno diario hasta el vencimiento, a las 09:00 locales; al editar reglas existentes se MUST preservar su anticipación histórica válida. Los avisos MUST detenerse al registrar el pago, pausar la recurrencia, desactivar avisos o eliminar lógicamente la regla. Marcar una ocurrencia MUST crear un único movimiento con la fecha real de pago/cobro y avanzar el calendario anclado en la fecha inicial. Los pagos MUST aparecer en el historial con acción de deshacer; deshacer MUST quitar el movimiento activo, conservar el pago como revertido y reabrir solo la ocurrencia más reciente. Los datos recurrentes MUST pertenecer solo a su propietario.
 
 ### Out of Scope
 
@@ -207,7 +212,7 @@ Una persona programa ingresos o gastos que se repiten, recibe avisos opcionales 
 - Deuda de tarjeta, cierres, vencimientos y conciliación de resúmenes; una compra puede anotarse como gasto común.
 - Presupuestos avanzados y aplicación nativa.
 
-### Key Entities *(include if feature involves data)*
+### Key Entities _(include if feature involves data)_
 
 - **Cuenta de acceso**: identidad privada de una persona y límite de acceso a sus datos.
 - **Movimiento**: ingreso o gasto propio con importe, moneda, categoría, fecha, cuenta financiera opcional, nota opcional y estado de sincronización.
@@ -219,7 +224,7 @@ Una persona programa ingresos o gastos que se repiten, recibe avisos opcionales 
 - **Meta de ahorro**: objetivo con nombre, importe, moneda y fecha opcional.
 - **Aporte manual**: registro de seguimiento asociado a una meta, sin efecto sobre movimientos o saldos.
 
-## Success Criteria *(mandatory)*
+## Success Criteria _(mandatory)_
 
 ### Measurable Outcomes
 

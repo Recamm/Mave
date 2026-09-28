@@ -11,6 +11,7 @@ import type { Category } from '../categories/categoryService';
 import { FullPageFormDialog } from '../../app/components/FullPageFormDialog';
 import { RefundForm } from '../movements/RefundForm';
 import type { FinancialAccountOption, Movement } from '../movements/movementService';
+import type { RecurringMovementPayment } from '../movements/recurringMovementService';
 import type { Refund } from '../movements/refundService';
 import { formatCivilDate, formatMoney } from '../../lib/money/format';
 import { getCurrentPeriod, getSummaryPeriod, type SummaryPeriod } from './periodSummary';
@@ -25,6 +26,8 @@ type MovementHistoryProps = {
   onDeleteMovement: (movement: Movement) => void | Promise<void>;
   onDeleteRefund: (refund: Refund) => void | Promise<void>;
   onRecordsChanged: () => Promise<void>;
+  onUndoRecurringPayment: (movement: Movement) => void | Promise<void>;
+  recurringPayments: RecurringMovementPayment[];
 };
 
 type HistoryEntryData =
@@ -33,6 +36,7 @@ type HistoryEntryData =
       id: string;
       sortDate: string;
       movement: Movement;
+      recurringPayment: RecurringMovementPayment | null;
       refunds: Refund[];
     }
   | {
@@ -65,6 +69,7 @@ type HistoryEntryProps = {
   onDeleteMovement: (movement: Movement) => void | Promise<void>;
   onDeleteRefund: (refund: Refund) => void | Promise<void>;
   onRecordsChanged: () => Promise<void>;
+  onUndoRecurringPayment: (movement: Movement) => void | Promise<void>;
 };
 
 type RefundManagerProps = {
@@ -86,6 +91,8 @@ export function MovementHistory({
   onDeleteMovement,
   onDeleteRefund,
   onRecordsChanged,
+  onUndoRecurringPayment,
+  recurringPayments,
 }: MovementHistoryProps) {
   const historyDialogRef = useRef<HTMLDialogElement>(null);
   const [view, setView] = useState<HistoryView>('categories');
@@ -96,6 +103,9 @@ export function MovementHistory({
   const [movementTypeDisplayPreference] = useState(() => getMovementTypeDisplayPreference());
   const [expandedCategoryKeys, setExpandedCategoryKeys] = useState<Set<string>>(() => new Set());
   const movementsById = new Map(movements.map((movement) => [movement.id, movement]));
+  const recurringPaymentsByMovementId = new Map(
+    recurringPayments.map((payment) => [payment.movement_id, payment]),
+  );
   const categoryNames = new Map(categories.map((category) => [category.id, category.name]));
   const refundsByExpense = new Map<string, Refund[]>();
 
@@ -117,6 +127,7 @@ export function MovementHistory({
         movementRefunds.map((refund) => refund.received_on),
       ),
       movement,
+      recurringPayment: recurringPaymentsByMovementId.get(movement.id) ?? null,
       refunds: movementRefunds,
     };
   });
@@ -294,6 +305,7 @@ export function MovementHistory({
                 onDeleteRefund={onDeleteRefund}
                 onEditMovement={onEditMovement}
                 onRecordsChanged={onRecordsChanged}
+                onUndoRecurringPayment={onUndoRecurringPayment}
               />
             ))}
           </ol>
@@ -337,6 +349,7 @@ export function MovementHistory({
                         onDeleteRefund={onDeleteRefund}
                         onEditMovement={onEditMovement}
                         onRecordsChanged={onRecordsChanged}
+                        onUndoRecurringPayment={onUndoRecurringPayment}
                       />
                     ))}
                     {group.entries.length > 3 ? (
@@ -435,6 +448,7 @@ export function MovementHistory({
                       onDeleteRefund={onDeleteRefund}
                       onEditMovement={onEditMovement}
                       onRecordsChanged={onRecordsChanged}
+                      onUndoRecurringPayment={onUndoRecurringPayment}
                       showDate={false}
                     />
                   ))}
@@ -475,6 +489,7 @@ function HistoryEntry({
   onDeleteMovement,
   onDeleteRefund,
   onRecordsChanged,
+  onUndoRecurringPayment,
 }: HistoryEntryProps) {
   if (entry.type === 'refunds') {
     const categoryName = categoryNames.get(entry.expense.category_id) ?? 'Categoría';
@@ -512,6 +527,7 @@ function HistoryEntry({
   }
 
   const categoryName = categoryNames.get(entry.movement.category_id) ?? 'Categoría';
+  const transactionLabel = entry.movement.kind === 'expense' ? 'pago' : 'cobro';
   return (
     <li className="movement-row">
       <details className="movement-entry">
@@ -534,24 +550,42 @@ function HistoryEntry({
         </summary>
         <div className="movement-entry__expanded">
           {entry.movement.note ? <p>{entry.movement.note}</p> : null}
+          {entry.recurringPayment ? (
+            <p>
+              {transactionLabel === 'pago' ? 'Pago' : 'Cobro'} recurrente · vencía{' '}
+              {formatCivilDate(entry.recurringPayment.due_on)}
+            </p>
+          ) : null}
           <span aria-label="Estado de sincronización" className="movement-row__sync-status">
             {syncStatusLabel(entry.movement.syncStatus ?? 'synced')}
           </span>
           <div className="movement-row__actions">
-            <button
-              aria-label="Editar movimiento"
-              onClick={() => onEditMovement(entry.movement)}
-              type="button"
-            >
-              Editar
-            </button>
-            <button
-              aria-label="Eliminar movimiento"
-              onClick={() => void onDeleteMovement(entry.movement)}
-              type="button"
-            >
-              Eliminar
-            </button>
+            {entry.recurringPayment ? (
+              <button
+                aria-label={`Deshacer ${transactionLabel} recurrente de ${categoryName}`}
+                onClick={() => void onUndoRecurringPayment(entry.movement)}
+                type="button"
+              >
+                Deshacer {transactionLabel}
+              </button>
+            ) : (
+              <>
+                <button
+                  aria-label="Editar movimiento"
+                  onClick={() => onEditMovement(entry.movement)}
+                  type="button"
+                >
+                  Editar
+                </button>
+                <button
+                  aria-label="Eliminar movimiento"
+                  onClick={() => void onDeleteMovement(entry.movement)}
+                  type="button"
+                >
+                  Eliminar
+                </button>
+              </>
+            )}
           </div>
           {entry.movement.kind === 'expense' ? (
             <RefundManager

@@ -9,15 +9,19 @@ import { accountService, type FinancialAccount } from '../accounts/accountServic
 import { transferService, type Transfer } from '../accounts/transferService';
 import { categoryService, type Category } from '../categories/categoryService';
 import { MovementForm } from './MovementForm';
-import { createMovementDefaults, type MovementInput } from './movementInput';
+import type { MovementInput } from './movementInput';
 import { movementService, type FinancialAccountOption, type Movement } from './movementService';
 import { MovementHistory } from '../summaries/MovementHistory';
 import { getCurrentPeriod } from '../summaries/periodSummary';
 import { summaryService } from '../summaries/summaryService';
 import { refundService, type Refund } from './refundService';
 import { RecurringMovementsPanel } from './RecurringMovementsPanel';
-import { recurringMovementService, type RecurringMovement } from './recurringMovementService';
-import { getOccurrenceDate, type RecurrenceSettings } from './recurrence';
+import {
+  recurringMovementService,
+  type RecurringMovement,
+  type RecurringMovementPayment,
+} from './recurringMovementService';
+import { getCivilDateInTimeZone, getOccurrenceDate, type RecurrenceSettings } from './recurrence';
 import { readOwnerLookups, writeOwnerLookups } from '../sync/ownerLookupCache';
 import { ConflictResolver } from '../sync/ConflictResolver';
 import {
@@ -39,6 +43,7 @@ export function MovementList() {
   const [conflicts, setConflicts] = useState<MovementConflict[]>([]);
   const [refunds, setRefunds] = useState<Refund[]>([]);
   const [recurringMovements, setRecurringMovements] = useState<RecurringMovement[]>([]);
+  const [recurringPayments, setRecurringPayments] = useState<RecurringMovementPayment[]>([]);
   const [period] = useState(() => getCurrentPeriod());
   const [editingMovement, setEditingMovement] = useState<Movement | null>(null);
   const [isMovementFormOpen, setIsMovementFormOpen] = useState(false);
@@ -66,6 +71,7 @@ export function MovementList() {
     setConflicts([]);
     setExpiredPendingPurged(false);
     setRecurringMovements([]);
+    setRecurringPayments([]);
     setRecurringLoadFailed(false);
     setAccounts([]);
     setTransfers([]);
@@ -102,17 +108,26 @@ export function MovementList() {
       const recurringPromise = ownerId
         ? recurringMovementService.list()
         : Promise.resolve<RecurringMovement[]>([]);
+      const recurringPaymentsPromise = ownerId
+        ? recurringMovementService.listPayments()
+        : Promise.resolve<RecurringMovementPayment[]>([]);
       const accountOverviewPromise = Promise.all([
         accountService.listAccounts(),
         transferService.listTransfers(),
       ]);
-      const [readResult, syncResult, accountOverviewResult, recurringResult] =
-        await Promise.allSettled([
-          readsPromise,
-          syncPromise,
-          accountOverviewPromise,
-          recurringPromise,
-        ]);
+      const [
+        readResult,
+        syncResult,
+        accountOverviewResult,
+        recurringResult,
+        recurringPaymentsResult,
+      ] = await Promise.allSettled([
+        readsPromise,
+        syncPromise,
+        accountOverviewPromise,
+        recurringPromise,
+        recurringPaymentsPromise,
+      ]);
 
       if (!isCurrent) {
         return;
@@ -154,6 +169,9 @@ export function MovementList() {
         setRecurringLoadFailed(false);
       } else {
         setRecurringLoadFailed(true);
+      }
+      if (recurringPaymentsResult.status === 'fulfilled') {
+        setRecurringPayments(recurringPaymentsResult.value);
       }
 
       if (syncResult.status === 'fulfilled') {
@@ -215,11 +233,13 @@ export function MovementList() {
           (count, result) => count + (result.discardedPendingCount ?? 0),
           0,
         );
-        const [periodRecords, openConflicts, loadedRecurringMovements] = await Promise.all([
-          summaryService.listPeriodRecords(),
-          syncEngine.listOpenConflicts(syncOwnerId),
-          recurringMovementService.list().catch(() => null),
-        ]);
+        const [periodRecords, openConflicts, loadedRecurringMovements, loadedRecurringPayments] =
+          await Promise.all([
+            summaryService.listPeriodRecords(),
+            syncEngine.listOpenConflicts(syncOwnerId),
+            recurringMovementService.list().catch(() => null),
+            recurringMovementService.listPayments().catch(() => null),
+          ]);
         const visibleMovements = await syncEngine.listVisibleMovements(
           syncOwnerId,
           periodRecords.movements,
@@ -242,6 +262,9 @@ export function MovementList() {
         if (loadedRecurringMovements) {
           setRecurringMovements(loadedRecurringMovements);
           setRecurringLoadFailed(false);
+        }
+        if (loadedRecurringPayments) {
+          setRecurringPayments(loadedRecurringPayments);
         }
       } catch {
         return;
@@ -348,12 +371,23 @@ export function MovementList() {
       throw new Error('Authenticated owner is unavailable.');
     }
 
+    const paidOn = getCivilDateInTimeZone(recurringMovement.time_zone);
     const paidMovement = await recurringMovementService.markPaid(
       recurringMovement.id,
       recurringMovement.occurrence_index,
-      createMovementDefaults().occurredOn,
+      paidOn,
       crypto.randomUUID(),
     );
+    setRecurringPayments((current) => [
+      {
+        due_on: recurringMovement.nextDueOn,
+        movement_id: paidMovement.id,
+        occurrence_index: recurringMovement.occurrence_index,
+        paid_on: paidOn,
+        recurring_movement_id: recurringMovement.id,
+      },
+      ...current,
+    ]);
     setMovements((current) =>
       [paidMovement, ...current.filter((movement) => movement.id !== paidMovement.id)].sort(
         sortByDate,
@@ -383,6 +417,31 @@ export function MovementList() {
       .list()
       .then(setRecurringMovements)
       .catch(() => undefined);
+  }
+
+  async function handleUndoRecurringMovementPayment(movement: Movement) {
+    if (
+      !window.confirm(
+        '¿Deshacer este pago recurrente? Se quitará del historial y se reabrirá si era el último pago.',
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await recurringMovementService.undoPayment(movement.id, crypto.randomUUID());
+      setMovements((current) => current.filter((item) => item.id !== movement.id));
+      setRecurringPayments((current) =>
+        current.filter((payment) => payment.movement_id !== movement.id),
+      );
+      setActionError(false);
+      void recurringMovementService
+        .list()
+        .then(setRecurringMovements)
+        .catch(() => undefined);
+    } catch {
+      setActionError(true);
+    }
   }
 
   async function handleSetRecurringActive(id: string, active: boolean) {
@@ -473,8 +532,19 @@ export function MovementList() {
     ? movements.filter((movement) => movement.financial_account_id === selectedAccountId)
     : movements.filter((movement) => movement.financial_account_id === null);
   const movementIdsForAccount = new Set(movementsForAccount.map((movement) => movement.id));
+  const recurringPaymentMovementIds = new Set(
+    recurringPayments.map((payment) => payment.movement_id),
+  );
+  const movementsForHistory = [
+    ...movementsForAccount,
+    ...movements.filter(
+      (movement) =>
+        recurringPaymentMovementIds.has(movement.id) && !movementIdsForAccount.has(movement.id),
+    ),
+  ];
+  const movementIdsForHistory = new Set(movementsForHistory.map((movement) => movement.id));
   const refundsForAccount = refunds.filter((refund) =>
-    movementIdsForAccount.has(refund.expense_id),
+    movementIdsForHistory.has(refund.expense_id),
   );
   const selectedAccount = accounts.find((account) => account.id === selectedAccountId) ?? null;
 
@@ -538,7 +608,7 @@ export function MovementList() {
       ) : null}
       {actionError ? (
         <FeedbackMessage tone="error">
-          No se pudo completar la operación. Verifica el importe pendiente e inténtalo de nuevo.
+          No se pudo completar la operación. Comprueba la conexión e inténtalo de nuevo.
         </FeedbackMessage>
       ) : null}
       {expiredPendingPurged ? (
@@ -556,8 +626,11 @@ export function MovementList() {
 
       <RecurringMovementsPanel
         categories={categories}
+        isLoading={isLoading}
         loadFailed={recurringLoadFailed}
+        mode="pending"
         movements={recurringMovements}
+        payments={recurringPayments}
         onMarkPaid={handleMarkRecurringMovementPaid}
         onSetActive={handleSetRecurringActive}
         onSetReminderEnabled={handleSetRecurringReminder}
@@ -599,11 +672,13 @@ export function MovementList() {
         categories={categories}
         financialAccounts={financialAccounts}
         isLoading={isLoading}
-        movements={movementsForAccount}
+        movements={movementsForHistory}
         onDeleteMovement={handleDelete}
         onDeleteRefund={handleDeleteRefund}
         onEditMovement={handleEditMovement}
         onRecordsChanged={refreshPeriodRecords}
+        onUndoRecurringPayment={handleUndoRecurringMovementPayment}
+        recurringPayments={recurringPayments}
         refunds={refundsForAccount}
       />
     </main>

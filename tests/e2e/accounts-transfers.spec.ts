@@ -121,6 +121,11 @@ async function installSupabaseMock(page: Page): Promise<BackendState> {
       return;
     }
 
+    if (url.pathname === '/rest/v1/recurring_movements' && request.method() === 'GET') {
+      await respond([]);
+      return;
+    }
+
     if (url.pathname === '/rest/v1/financial_accounts' && request.method() === 'GET') {
       if (state.accountReadDelayMs > 0) {
         await new Promise((resolve) => setTimeout(resolve, state.accountReadDelayMs));

@@ -16,6 +16,7 @@ import { calculateAccountBalances, type AccountBalance } from './accountBalance'
 import { TransferForm } from './TransferForm';
 import { TransferHistory } from './TransferHistory';
 import { transferService, type Transfer } from './transferService';
+import { RecurringMovementsManagement } from '../movements/RecurringMovementsManagement';
 import { PeriodSummary } from '../summaries/PeriodSummaryView';
 import { getCurrentPeriod } from '../summaries/periodSummary';
 import { readOwnerLookups, writeOwnerLookups } from '../sync/ownerLookupCache';
@@ -141,6 +142,12 @@ export function AccountsPage() {
   const accounts = overview?.accounts ?? [];
   const activeAccounts = accounts.filter((account) => account.archived_at === null);
   const archivedAccounts = accounts.filter((account) => account.archived_at !== null);
+  const financialAccountOptions = accounts.map(({ archived_at, currency, id, name }) => ({
+    archived_at,
+    currency,
+    id,
+    name,
+  }));
   const balanceByAccountId = new Map(
     (overview?.balances ?? []).map((balance) => [balance.accountId, balance]),
   );
@@ -490,6 +497,11 @@ export function AccountsPage() {
 
         <TransferHistory accounts={accounts} transfers={overview?.transfers ?? []} />
       </div>
+
+      <RecurringMovementsManagement
+        categories={categories}
+        financialAccounts={financialAccountOptions}
+      />
 
       <SavingsGoalsSection refreshSignal={refreshKey} />
 

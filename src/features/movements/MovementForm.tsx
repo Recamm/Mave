@@ -11,6 +11,8 @@ import {
 } from './movementInput';
 import {
   createRecurrenceDraft,
+  getReminderFrequency,
+  getReminderLeadLabel,
   normalizeRecurrenceSettings,
   reminderLeadOptions,
   RecurrenceInputError,
@@ -19,14 +21,20 @@ import {
 } from './recurrence';
 import type { FinancialAccount } from '../accounts/accountService';
 import type { FinancialAccountOption, Movement } from './movementService';
+import type { RecurringMovement } from './recurringMovementService';
 
 type MovementFormProps = {
   categories: Category[];
   defaultAccount?: FinancialAccount | null;
   financialAccounts: FinancialAccountOption[];
   movement?: Movement | null;
+  recurringMovement?: RecurringMovement | null;
   onCancel: () => void;
-  onSave: (input: MovementInput, recurrence?: RecurrenceSettings) => Promise<void>;
+  onSave: (
+    input: MovementInput,
+    recurrence?: RecurrenceSettings,
+    recurringMovementId?: string,
+  ) => Promise<void>;
 };
 
 function toDraft(movement: Movement): MovementDraft {
@@ -41,17 +49,47 @@ function toDraft(movement: Movement): MovementDraft {
   };
 }
 
+function toRecurringMovementDraft(movement: RecurringMovement): MovementDraft {
+  return {
+    amount: movement.amount,
+    categoryId: movement.category_id,
+    currency: movement.currency,
+    financialAccountId: movement.financial_account_id ?? '',
+    kind: movement.kind,
+    note: movement.note ?? '',
+    occurredOn: movement.starts_on,
+  };
+}
+
+function toRecurrenceDraft(movement: RecurringMovement): RecurrenceDraft {
+  return {
+    intervalCount: String(movement.interval_count),
+    intervalUnit: movement.interval_unit,
+    reminderDaysBefore: String(movement.reminder_days_before),
+    reminderEnabled: movement.reminder_enabled,
+    reminderEveryDays: String(movement.reminder_every_days),
+    reminderFrequency: getReminderFrequency(
+      movement.reminder_days_before,
+      movement.reminder_every_days,
+    ),
+  };
+}
+
 export function MovementForm({
   categories,
   defaultAccount = null,
   financialAccounts,
   movement,
+  recurringMovement,
   onCancel,
   onSave,
 }: MovementFormProps) {
   const [draft, setDraft] = useState(() => {
     if (movement) {
       return toDraft(movement);
+    }
+    if (recurringMovement) {
+      return toRecurringMovementDraft(recurringMovement);
     }
 
     const defaults = createMovementDefaults();
@@ -61,20 +99,27 @@ export function MovementForm({
       financialAccountId: defaultAccount?.id ?? defaults.financialAccountId,
     };
   });
-  const [isRecurring, setIsRecurring] = useState(false);
-  const [recurrenceDraft, setRecurrenceDraft] = useState(createRecurrenceDraft);
+  const [isRecurring, setIsRecurring] = useState(
+    () => recurringMovement !== null && recurringMovement !== undefined,
+  );
+  const [recurrenceDraft, setRecurrenceDraft] = useState(() =>
+    recurringMovement ? toRecurrenceDraft(recurringMovement) : createRecurrenceDraft(),
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const currentCategoryId = movement?.category_id ?? recurringMovement?.category_id;
+  const currentAccountId =
+    movement?.financial_account_id ?? recurringMovement?.financial_account_id;
   const archivedCategory = categories.find(
-    (category) => category.id === movement?.category_id && category.archived_at !== null,
+    (category) => category.id === currentCategoryId && category.archived_at !== null,
   );
   const selectableCategories = categories.filter(
-    (category) => category.archived_at === null || category.id === movement?.category_id,
+    (category) => category.archived_at === null || category.id === currentCategoryId,
   );
   const selectableAccounts = financialAccounts.filter(
     (account) =>
       account.currency === draft.currency &&
-      (account.archived_at === null || account.id === movement?.financial_account_id),
+      (account.archived_at === null || account.id === currentAccountId),
   );
 
   function updateDraft<Key extends keyof MovementDraft>(key: Key, value: MovementDraft[Key]) {
@@ -97,6 +142,7 @@ export function MovementForm({
       await onSave(
         normalizeMovementInput(draft),
         isRecurring ? normalizeRecurrenceSettings(recurrenceDraft) : undefined,
+        recurringMovement?.id,
       );
     } catch (error) {
       setErrorMessage(
@@ -113,19 +159,27 @@ export function MovementForm({
     <section aria-labelledby="movement-form-title" className="movement-editor">
       <div className="movement-editor__heading">
         <p className="eyebrow">
-          {movement ? 'Editar registro' : isRecurring ? 'Nueva recurrencia' : 'Nuevo registro'}
+          {movement
+            ? 'Editar registro'
+            : recurringMovement
+              ? 'Editar recurrencia'
+              : isRecurring
+                ? 'Nueva recurrencia'
+                : 'Nuevo registro'}
         </p>
         <h2 id="movement-form-title">
           {movement
             ? 'Editar movimiento'
-            : isRecurring
-              ? 'Crear movimiento recurrente'
-              : 'Registrar un movimiento'}
+            : recurringMovement
+              ? 'Editar movimiento recurrente'
+              : isRecurring
+                ? 'Crear movimiento recurrente'
+                : 'Registrar un movimiento'}
         </h2>
       </div>
 
       <form className="movement-form" onSubmit={handleSubmit}>
-        {!movement ? (
+        {!movement && !recurringMovement ? (
           <fieldset className="movement-form__frequency">
             <legend>Frecuencia</legend>
             <div className="movement-form__frequency-options">
@@ -292,6 +346,14 @@ export function MovementForm({
                       {option.label}
                     </option>
                   ))}
+                  {!reminderLeadOptions.some(
+                    (option) => String(option.days) === recurrenceDraft.reminderDaysBefore,
+                  ) ? (
+                    <option value={recurrenceDraft.reminderDaysBefore}>
+                      {getReminderLeadLabel(Number(recurrenceDraft.reminderDaysBefore))}{' '}
+                      (configuración anterior)
+                    </option>
+                  ) : null}
                 </select>
 
                 <fieldset className="movement-form__reminder-frequency">
@@ -321,6 +383,21 @@ export function MovementForm({
                       />
                       <span>Cada día hasta el vencimiento</span>
                     </label>
+                    {recurrenceDraft.reminderFrequency === 'custom' ? (
+                      <label className="is-selected">
+                        <input
+                          checked
+                          name="recurrence-reminder-frequency"
+                          onChange={() => updateRecurrenceDraft('reminderFrequency', 'custom')}
+                          type="radio"
+                          value="custom"
+                        />
+                        <span>
+                          Conservar cada {recurrenceDraft.reminderEveryDays} días (configuración
+                          anterior)
+                        </span>
+                      </label>
+                    ) : null}
                   </div>
                 </fieldset>
 
@@ -342,11 +419,13 @@ export function MovementForm({
               ? 'Guardando…'
               : movement
                 ? 'Guardar cambios'
-                : isRecurring
-                  ? 'Crear recurrencia'
-                  : 'Registrar movimiento'}
+                : recurringMovement
+                  ? 'Guardar recurrencia'
+                  : isRecurring
+                    ? 'Crear recurrencia'
+                    : 'Registrar movimiento'}
           </button>
-          {movement ? (
+          {movement || recurringMovement ? (
             <button disabled={isSaving} onClick={onCancel} type="button">
               Cancelar
             </button>

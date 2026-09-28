@@ -12,7 +12,7 @@
 
 ## Operaciones de lectura
 
-La SPA puede consultar movimientos, recurrencias y sus pagos, categorías, cuentas, transferencias, devoluciones, metas y aportes propios mediante consultas o vistas con RLS. La lectura de resúmenes y exportaciones se deriva de movimientos y demás registros contables, no de reglas recurrentes sin confirmar, y devuelve únicamente filas visibles para la cuenta autenticada.
+La SPA puede consultar movimientos, recurrencias y sus pagos, categorías, cuentas, transferencias, devoluciones, metas y aportes propios mediante consultas o vistas con RLS. Las consultas de agenda excluyen reglas eliminadas lógicamente; los pagos no revertidos y sus movimientos asociados siguen disponibles en el historial aunque se haya eliminado la regla. La lectura de resúmenes y exportaciones se deriva de movimientos y demás registros contables, no de reglas recurrentes sin confirmar, y devuelve únicamente filas visibles para la cuenta autenticada.
 
 Los importes viajan como texto decimal y las fechas financieras como fechas civiles. Las consultas y exportaciones no suman ARS con USD. CSV organiza las entidades para planillas; JSON conserva IDs y referencias entre entidades.
 
@@ -25,7 +25,8 @@ Las siguientes operaciones son contratos de comportamiento, no una exigencia de 
 | `apply_movement_change` | ID idempotente de operación, ID del movimiento si existe, acción, versión esperada y campos del movimiento | Crea, edita o marca borrado dentro de una transacción. Repetir el mismo ID de operación no duplica el efecto. Una versión inesperada produce un conflicto explícito, preserva las versiones necesarias y no sobrescribe en silencio. |
 | `record_transfer` | ID idempotente, origen, destino, importe y fecha | Inserta una sola transferencia si ambas cuentas pertenecen a la sesión, son distintas y tienen la misma moneda. Un error no deja un débito sin crédito. |
 | `record_refund` | ID idempotente, gasto, importe, fecha de recepción y acción | Verifica que el padre sea un gasto propio y que la suma de devoluciones activas no supere el importe no devuelto. Serializa cambios por gasto. Moneda, categoría y cuenta se heredan del gasto. |
-| `mark_recurring_movement_paid` | Regla propia, índice de ocurrencia esperado, fecha real de pago/cobro e ID idempotente | En una transacción crea un solo movimiento contable, conserva vencimiento y pago, y avanza el calendario. Los reintentos o confirmaciones concurrentes no duplican movimientos; las reglas pausadas y las cuentas vencidas no se aplican. |
+| `mark_recurring_movement_paid` | Regla propia, índice de ocurrencia esperado, fecha real de pago/cobro e ID idempotente | En una transacción valida que el vencimiento no sea posterior a la fecha local del servidor en la zona horaria de la regla y que la fecha real de pago tampoco sea futura; crea un solo movimiento contable, conserva vencimiento y pago, y avanza el calendario. Los reintentos o confirmaciones concurrentes no duplican movimientos; las reglas pausadas y las cuentas vencidas no se aplican. |
+| `undo_recurring_movement_payment` | Movimiento propio asociado a un pago recurrente e ID idempotente | Marca el pago como revertido y borra el movimiento con `apply_movement_change`, preservando el historial de sincronización. Es idempotente; solo reabre el índice si se revierte la ocurrencia más reciente. La reversión no elimina ni modifica otros pagos de la regla. |
 | `claim_due_recurring_movement_reminders` | Hora del servidor; solo `service_role` | Reclama recurrencias activas dentro de la ventana de aviso local y devuelve únicamente suscripciones Push propias para entrega. La fecha reclamada limita la frecuencia elegida (una vez al inicio o diaria) y los avisos finalizan en el vencimiento. |
 | `resolve_movement_conflict` | Conflicto propio y revisión conservada elegida | En una transacción aplica como máximo una revisión al movimiento canónico, incrementa su versión y cierra el conflicto. Los reintentos no vuelven a aplicar la resolución. |
 | `account_sync_allowed` | Sin parámetros de propietario | Consulta el ciclo propio con el reloj del servidor; permite purgar una outbox compuesta solo por conflictos sin confiar en la hora del dispositivo. |
@@ -57,6 +58,9 @@ La UI distingue al menos: sin sesión/conexión, validación financiera, operaci
 - Dos usuarios de prueba no pueden consultar ni mutar filas del otro, incluso omitiendo filtros del cliente o alterando IDs de referencia.
 - Repetir una operación con el mismo UUID no duplica movimientos, transferencias ni devoluciones.
 - Una ocurrencia recurrente pagada crea un único movimiento y avanza su ciclo en la misma transacción; el acceso a una regla o pago de otro propietario queda denegado.
+- Una ocurrencia futura no se puede confirmar en Inicio ni por RPC; las reglas eliminadas lógicamente desaparecen de las agendas y conservan los pagos históricos.
+- El pago recurrente figura en el historial y puede deshacerse una sola vez; revertir el pago más reciente reabre esa ocurrencia, mientras que revertir uno anterior no retrocede el índice.
+- Un pago asociado a una regla eliminada se puede deshacer desde el historial sin modificar el índice de esa regla.
 - Una transferencia de distinta moneda, entre cuentas ajenas o a la misma cuenta falla sin cambios parciales.
 - Devoluciones concurrentes que excederían el gasto no pueden confirmarse ambas.
 - Un conflicto conserva versiones, cuenta el movimiento una sola vez y aplica únicamente la revisión elegida.

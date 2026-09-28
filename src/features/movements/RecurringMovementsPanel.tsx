@@ -1,19 +1,27 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Bell, CheckCircle2, Pause, Play } from 'lucide-react';
+import { Bell, CheckCircle2, Pause, Pencil, Play, Trash2, Undo2 } from 'lucide-react';
 import { FeedbackMessage } from '../../app/components/FeedbackMessage';
 import { formatCivilDate, formatMoney } from '../../lib/money/format';
 import type { Category } from '../categories/categoryService';
-import type { RecurringMovement } from './recurringMovementService';
-import { getReminderFrequency, reminderLeadOptions } from './recurrence';
+import type { RecurringMovement, RecurringMovementPayment } from './recurringMovementService';
+import { getReminderFrequency, getReminderLeadLabel, isRecurringMovementDue } from './recurrence';
+
+export type RecurringMovementsMode = 'management' | 'pending';
 
 type RecurringMovementsPanelProps = {
   categories: Category[];
+  isLoading: boolean;
   loadFailed: boolean;
+  mode: RecurringMovementsMode;
   movements: RecurringMovement[];
+  payments?: RecurringMovementPayment[];
   onMarkPaid: (movement: RecurringMovement) => Promise<void>;
   onSetActive: (id: string, active: boolean) => Promise<void>;
   onSetReminderEnabled: (id: string, reminderEnabled: boolean) => Promise<void>;
+  onUndoPayment?: (payment: RecurringMovementPayment) => Promise<void>;
+  onEdit?: (movement: RecurringMovement) => void;
+  onDelete?: (movement: RecurringMovement) => void | Promise<void>;
 };
 
 const intervalLabels: Record<RecurringMovement['interval_unit'], [string, string]> = {
@@ -25,15 +33,22 @@ const intervalLabels: Record<RecurringMovement['interval_unit'], [string, string
 
 export function RecurringMovementsPanel({
   categories,
+  isLoading,
   loadFailed,
+  mode,
   movements,
+  payments = [],
   onMarkPaid,
   onSetActive,
   onSetReminderEnabled,
+  onUndoPayment,
+  onEdit,
+  onDelete,
 }: RecurringMovementsPanelProps) {
   const { search } = useLocation();
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [currentInstant, setCurrentInstant] = useState(() => new Date());
   const [isOnline, setIsOnline] = useState(
     () => typeof navigator === 'undefined' || navigator.onLine,
   );
@@ -50,6 +65,19 @@ export function RecurringMovementsPanel({
   }, []);
 
   useEffect(() => {
+    const refreshCurrentInstant = () => setCurrentInstant(new Date());
+    const intervalId = window.setInterval(refreshCurrentInstant, 60_000);
+    window.addEventListener('focus', refreshCurrentInstant);
+    document.addEventListener('visibilitychange', refreshCurrentInstant);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', refreshCurrentInstant);
+      document.removeEventListener('visibilitychange', refreshCurrentInstant);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!recurringId) {
       return;
     }
@@ -57,6 +85,26 @@ export function RecurringMovementsPanel({
       .getElementById(`recurring-${recurringId}`)
       ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, [movements, recurringId]);
+
+  const visibleMovements =
+    mode === 'pending'
+      ? movements.filter((movement) => {
+          if (!movement.active) {
+            return false;
+          }
+
+          const previousOccurrenceWasPaid = payments.some(
+            (payment) =>
+              payment.recurring_movement_id === movement.id &&
+              payment.occurrence_index === movement.occurrence_index - 1,
+          );
+
+          return (
+            !previousOccurrenceWasPaid ||
+            isRecurringMovementDue(movement.nextDueOn, movement.time_zone, currentInstant)
+          );
+        })
+      : movements;
 
   async function runAction(id: string, action: () => Promise<void>) {
     setPendingId(id);
@@ -74,7 +122,7 @@ export function RecurringMovementsPanel({
     }
   }
 
-  if (movements.length === 0 && !loadFailed) {
+  if (mode === 'pending' && visibleMovements.length === 0 && !loadFailed) {
     return null;
   }
 
@@ -82,10 +130,12 @@ export function RecurringMovementsPanel({
     <section aria-labelledby="recurring-movements-title" className="recurring-movements">
       <div className="recurring-movements__heading">
         <div>
-          <p className="eyebrow">Agenda</p>
-          <h2 id="recurring-movements-title">Pagos y cobros recurrentes</h2>
+          <p className="eyebrow">{mode === 'pending' ? 'Pendientes' : 'Agenda'}</p>
+          <h2 id="recurring-movements-title">
+            {mode === 'pending' ? 'Pagos y cobros pendientes' : 'Pagos y cobros recurrentes'}
+          </h2>
         </div>
-        {movements.some((movement) => movement.reminder_enabled) ? (
+        {mode === 'management' && movements.some((movement) => movement.reminder_enabled) ? (
           <Link to="/profile?section=security">Notificaciones</Link>
         ) : null}
       </div>
@@ -103,8 +153,15 @@ export function RecurringMovementsPanel({
         </FeedbackMessage>
       ) : null}
 
+      {isLoading ? (
+        <FeedbackMessage tone="info">Cargando movimientos recurrentes.</FeedbackMessage>
+      ) : null}
+      {visibleMovements.length === 0 && mode === 'management' && !loadFailed && !isLoading ? (
+        <p className="recurring-movements__empty">No hay pagos ni cobros recurrentes.</p>
+      ) : null}
+
       <div className="recurring-movements__list">
-        {movements.map((movement) => {
+        {visibleMovements.map((movement) => {
           const category = categories.find((item) => item.id === movement.category_id);
           const label = movement.note?.trim() || category?.name || 'Movimiento recurrente';
           const [singular, plural] = intervalLabels[movement.interval_unit];
@@ -113,10 +170,19 @@ export function RecurringMovementsPanel({
             movement.reminder_days_before,
             movement.reminder_every_days,
           );
-          const reminderLead =
-            reminderLeadOptions.find((option) => option.days === movement.reminder_days_before)
-              ?.label ?? `${movement.reminder_days_before} días antes`;
+          const reminderLead = getReminderLeadLabel(movement.reminder_days_before);
+          const previousOccurrencePayment = payments.find(
+            (payment) =>
+              payment.recurring_movement_id === movement.id &&
+              payment.occurrence_index === movement.occurrence_index - 1,
+          );
+          const isDue = isRecurringMovementDue(
+            movement.nextDueOn,
+            movement.time_zone,
+            currentInstant,
+          );
           const isPending = pendingId === movement.id;
+          const transactionVerb = movement.kind === 'expense' ? 'pagado' : 'cobrado';
 
           return (
             <article
@@ -137,6 +203,11 @@ export function RecurringMovementsPanel({
                   Próximo vencimiento:{' '}
                   <time dateTime={movement.nextDueOn}>{formatCivilDate(movement.nextDueOn)}</time>
                 </p>
+                {movement.active && !isDue ? (
+                  <p>
+                    Podrás marcarlo {transactionVerb} el {formatCivilDate(movement.nextDueOn)}.
+                  </p>
+                ) : null}
                 <p>
                   Cada {movement.interval_count} {intervalLabel}
                   {movement.reminder_enabled
@@ -154,41 +225,82 @@ export function RecurringMovementsPanel({
               <div className="recurring-movement__actions">
                 <button
                   className="button-primary"
-                  disabled={!isOnline || isPending || !movement.active}
+                  disabled={!isOnline || isPending || !movement.active || !isDue}
                   onClick={() => void runAction(movement.id, () => onMarkPaid(movement))}
                   type="button"
                 >
                   <CheckCircle2 aria-hidden="true" size={17} />
                   <span>{movement.kind === 'expense' ? 'Marcar pagado' : 'Marcar cobrado'}</span>
                 </button>
-                <label className="recurring-movement__reminder-toggle">
-                  <input
-                    checked={movement.reminder_enabled}
-                    disabled={!isOnline || isPending}
-                    onChange={(event) =>
-                      void runAction(movement.id, () =>
-                        onSetReminderEnabled(movement.id, event.target.checked),
-                      )
-                    }
-                    type="checkbox"
-                  />
-                  <Bell aria-hidden="true" size={17} />
-                  <span>Avisos</span>
-                </label>
-                <button
-                  disabled={!isOnline || isPending}
-                  onClick={() =>
-                    void runAction(movement.id, () => onSetActive(movement.id, !movement.active))
-                  }
-                  type="button"
-                >
-                  {movement.active ? (
-                    <Pause aria-hidden="true" size={17} />
-                  ) : (
-                    <Play aria-hidden="true" size={17} />
-                  )}
-                  <span>{movement.active ? 'Pausar' : 'Reanudar'}</span>
-                </button>
+                {mode === 'management' ? (
+                  <>
+                    {previousOccurrencePayment && onUndoPayment ? (
+                      <button
+                        aria-label={`Deshacer ${movement.kind === 'expense' ? 'pago' : 'cobro'} recurrente de ${label}`}
+                        disabled={!isOnline || isPending}
+                        onClick={() =>
+                          void runAction(movement.id, () =>
+                            onUndoPayment(previousOccurrencePayment),
+                          )
+                        }
+                        type="button"
+                      >
+                        <Undo2 aria-hidden="true" size={17} />
+                        <span>
+                          {movement.kind === 'expense' ? 'Deshacer pago' : 'Deshacer cobro'}
+                        </span>
+                      </button>
+                    ) : null}
+                    <label className="recurring-movement__reminder-toggle">
+                      <input
+                        checked={movement.reminder_enabled}
+                        disabled={!isOnline || isPending}
+                        onChange={(event) =>
+                          void runAction(movement.id, () =>
+                            onSetReminderEnabled(movement.id, event.target.checked),
+                          )
+                        }
+                        type="checkbox"
+                      />
+                      <Bell aria-hidden="true" size={17} />
+                      <span>Avisos</span>
+                    </label>
+                    <button
+                      disabled={!isOnline || isPending}
+                      onClick={() =>
+                        void runAction(movement.id, () =>
+                          onSetActive(movement.id, !movement.active),
+                        )
+                      }
+                      type="button"
+                    >
+                      {movement.active ? (
+                        <Pause aria-hidden="true" size={17} />
+                      ) : (
+                        <Play aria-hidden="true" size={17} />
+                      )}
+                      <span>{movement.active ? 'Pausar' : 'Reanudar'}</span>
+                    </button>
+                    <button
+                      disabled={!isOnline || isPending}
+                      onClick={() => onEdit?.(movement)}
+                      type="button"
+                    >
+                      <Pencil aria-hidden="true" size={17} />
+                      <span>Editar</span>
+                    </button>
+                    <button
+                      disabled={!isOnline || isPending}
+                      onClick={() =>
+                        void runAction(movement.id, () => Promise.resolve(onDelete?.(movement)))
+                      }
+                      type="button"
+                    >
+                      <Trash2 aria-hidden="true" size={17} />
+                      <span>Eliminar</span>
+                    </button>
+                  </>
+                ) : null}
               </div>
             </article>
           );

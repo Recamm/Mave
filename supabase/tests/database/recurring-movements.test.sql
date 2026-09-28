@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(21);
+select plan(34);
 
 insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at)
 values
@@ -181,11 +181,30 @@ select set_config(
   true
 );
 set local role authenticated;
+update public.recurring_movements
+set starts_on = current_date + 1;
 select is(
   public.mark_recurring_movement_paid(
     (select id from public.recurring_movements),
     0,
-    '2026-09-24',
+    current_date,
+    '74000000-0000-0000-0000-000000000003'
+  )->>'status',
+  'not-due',
+  'a future occurrence cannot be marked paid'
+);
+select is(
+  (select occurrence_index from public.recurring_movements),
+  0,
+  'a future payment does not advance the recurring schedule'
+);
+update public.recurring_movements
+set starts_on = current_date;
+select is(
+  public.mark_recurring_movement_paid(
+    (select id from public.recurring_movements),
+    0,
+    current_date,
     '74000000-0000-0000-0000-000000000001'
   )->>'status',
   'applied',
@@ -198,7 +217,7 @@ select is(
 );
 select is(
   (select occurred_on from public.movements where client_operation_id = '74000000-0000-0000-0000-000000000001'),
-  '2026-09-24'::date,
+  current_date,
   'the ledger movement uses the actual paid date'
 );
 select is(
@@ -221,6 +240,36 @@ select is(
   1::bigint,
   'an occurrence is never recorded twice'
 );
+select is(
+  public.undo_recurring_movement_payment(
+    (select id from public.movements where client_operation_id = '74000000-0000-0000-0000-000000000001'),
+    '74000000-0000-0000-0000-000000000004'
+  )->>'status',
+  'undone',
+  'undoing a recurring payment removes its ledger entry'
+);
+select is(
+  (select count(*) from public.movements where deleted_at is null),
+  0::bigint,
+  'an undone recurring payment is hidden from movement history'
+);
+select is(
+  (select occurrence_index from public.recurring_movements),
+  0,
+  'undoing the latest payment reopens its occurrence'
+);
+select ok(
+  (select reversed_at is not null from public.recurring_movement_payments),
+  'an undone recurring payment remains marked as reversed'
+);
+select is(
+  public.undo_recurring_movement_payment(
+    (select id from public.movements where client_operation_id = '74000000-0000-0000-0000-000000000001'),
+    '74000000-0000-0000-0000-000000000005'
+  )->>'status',
+  'already-undone',
+  'retrying an undo is idempotent'
+);
 select ok(
   not has_function_privilege(
     'anon',
@@ -228,6 +277,49 @@ select ok(
     'EXECUTE'
   ),
   'anonymous users cannot mark recurring movements paid'
+);
+select ok(
+  not has_function_privilege(
+    'anon',
+    'public.undo_recurring_movement_payment(uuid,uuid)',
+    'EXECUTE'
+  ),
+  'anonymous users cannot undo recurring movement payments'
+);
+select is(
+  public.mark_recurring_movement_paid(
+    (select id from public.recurring_movements),
+    0,
+    current_date,
+    '74000000-0000-0000-0000-000000000006'
+  )->>'status',
+  'applied',
+  'a second payment can be recorded before deleting the rule'
+);
+update public.recurring_movements
+set deleted_at = statement_timestamp();
+select is(
+  (select count(*) from public.recurring_movements where deleted_at is null),
+  0::bigint,
+  'a deleted recurring rule no longer appears in management'
+);
+select is(
+  public.undo_recurring_movement_payment(
+    (select id from public.movements where client_operation_id = '74000000-0000-0000-0000-000000000006'),
+    '74000000-0000-0000-0000-000000000007'
+  )->>'status',
+  'undone',
+  'a payment can be undone after its recurring rule is deleted'
+);
+select is(
+  (select occurrence_index from public.recurring_movements),
+  1,
+  'undoing a payment does not update the schedule of a deleted rule'
+);
+select is(
+  (select count(*) from public.recurring_movement_payments),
+  2::bigint,
+  'deleting a recurring rule preserves linked payment history'
 );
 
 select * from finish();

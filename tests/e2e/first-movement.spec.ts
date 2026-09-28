@@ -44,6 +44,44 @@ type MovementFixture = {
   updated_at: string;
 };
 
+type RecurringMovementFixture = {
+  id: string;
+  user_id: string;
+  active: boolean;
+  amount: string;
+  amount_text: string;
+  category_id: string;
+  created_at: string;
+  currency: 'ARS' | 'USD';
+  deleted_at: string | null;
+  financial_account_id: string | null;
+  interval_count: number;
+  interval_unit: 'day' | 'week' | 'month' | 'year';
+  kind: 'income' | 'expense';
+  last_notified_on: string | null;
+  note: string | null;
+  occurrence_index: number;
+  reminder_days_before: number;
+  reminder_enabled: boolean;
+  reminder_every_days: number;
+  starts_on: string;
+  time_zone: string;
+  updated_at: string;
+};
+
+type RecurringPaymentFixture = {
+  id: string;
+  user_id: string;
+  recurring_movement_id: string;
+  occurrence_index: number;
+  due_on: string;
+  paid_on: string;
+  movement_id: string;
+  client_operation_id: string;
+  reversed_at: string | null;
+  created_at: string;
+};
+
 test('registers a first movement, edits and deletes it, and manages categories', async ({
   page,
 }) => {
@@ -68,7 +106,11 @@ test('registers a first movement, edits and deletes it, and manages categories',
     updated_at: timestamp,
   }));
   const movements: MovementFixture[] = [];
+  const recurringMovements: RecurringMovementFixture[] = [];
+  const recurringPayments: RecurringPaymentFixture[] = [];
   let movementSequence = 0;
+  let recurringSequence = 0;
+  let recurringPaymentSequence = 0;
 
   await page.route('http://127.0.0.1:54321/**', async (route) => {
     const request = route.request();
@@ -180,6 +222,61 @@ test('registers a first movement, edits and deletes it, and manages categories',
     }
 
     if (url.pathname === '/rest/v1/recurring_movements' && request.method() === 'GET') {
+      await respond(recurringMovements.filter((movement) => movement.deleted_at === null));
+      return;
+    }
+
+    if (url.pathname === '/rest/v1/recurring_movements' && request.method() === 'POST') {
+      recurringSequence += 1;
+      const input = request.postDataJSON() as Omit<
+        RecurringMovementFixture,
+        | 'id'
+        | 'user_id'
+        | 'occurrence_index'
+        | 'last_notified_on'
+        | 'deleted_at'
+        | 'created_at'
+        | 'updated_at'
+        | 'amount_text'
+      >;
+      const recurringMovement: RecurringMovementFixture = {
+        ...input,
+        amount_text: input.amount,
+        id: `40000000-0000-0000-0000-${String(recurringSequence).padStart(12, '0')}`,
+        user_id: ownerId,
+        active: true,
+        occurrence_index: 0,
+        last_notified_on: null,
+        deleted_at: null,
+        created_at: timestamp,
+        updated_at: timestamp,
+      };
+      recurringMovements.push(recurringMovement);
+      await respond(recurringMovement, 201);
+      return;
+    }
+
+    if (url.pathname === '/rest/v1/recurring_movements' && request.method() === 'PATCH') {
+      const recurringMovementId = url.searchParams.get('id')?.replace('eq.', '');
+      const recurringMovement = recurringMovements.find(
+        (item) => item.id === recurringMovementId && item.deleted_at === null,
+      );
+      if (!recurringMovement) {
+        await respond({ message: 'Recurring movement not found' }, 404);
+        return;
+      }
+
+      Object.assign(recurringMovement, request.postDataJSON(), { updated_at: timestamp });
+      await respond(recurringMovement);
+      return;
+    }
+
+    if (url.pathname === '/rest/v1/recurring_movement_payments' && request.method() === 'GET') {
+      await respond(recurringPayments.filter((payment) => payment.reversed_at === null));
+      return;
+    }
+
+    if (url.pathname === '/rest/v1/recurring_movement_payments' && request.method() === 'GET') {
       await respond([]);
       return;
     }
@@ -191,6 +288,106 @@ test('registers a first movement, edits and deletes it, and manages categories',
 
     if (url.pathname === '/rest/v1/refunds' && request.method() === 'GET') {
       await respond([]);
+      return;
+    }
+
+    if (
+      url.pathname === '/rest/v1/rpc/mark_recurring_movement_paid' &&
+      request.method() === 'POST'
+    ) {
+      const input = request.postDataJSON() as {
+        p_expected_occurrence_index: number;
+        p_operation_id: string;
+        p_paid_on: string;
+        p_recurring_movement_id: string;
+      };
+      const recurringMovement = recurringMovements.find(
+        (item) => item.id === input.p_recurring_movement_id && item.deleted_at === null,
+      );
+      if (!recurringMovement || !recurringMovement.active) {
+        await respond({ status: 'inactive' });
+        return;
+      }
+      if (recurringMovement.occurrence_index !== input.p_expected_occurrence_index) {
+        await respond({ status: 'stale' });
+        return;
+      }
+
+      movementSequence += 1;
+      const paidMovement: MovementFixture = {
+        amount: recurringMovement.amount,
+        amount_text: recurringMovement.amount_text,
+        category_id: recurringMovement.category_id,
+        client_operation_id: input.p_operation_id,
+        created_at: timestamp,
+        currency: recurringMovement.currency,
+        deleted_at: null,
+        financial_account_id: recurringMovement.financial_account_id,
+        id: `20000000-0000-0000-0000-${String(movementSequence).padStart(12, '0')}`,
+        kind: recurringMovement.kind,
+        note: recurringMovement.note,
+        occurred_on: input.p_paid_on,
+        updated_at: timestamp,
+        user_id: ownerId,
+        version: 1,
+      };
+      movements.push(paidMovement);
+      recurringPaymentSequence += 1;
+      recurringPayments.push({
+        id: `50000000-0000-0000-0000-${String(recurringPaymentSequence).padStart(12, '0')}`,
+        user_id: ownerId,
+        recurring_movement_id: recurringMovement.id,
+        occurrence_index: recurringMovement.occurrence_index,
+        due_on: recurringMovement.starts_on,
+        paid_on: input.p_paid_on,
+        movement_id: paidMovement.id,
+        client_operation_id: input.p_operation_id,
+        reversed_at: null,
+        created_at: timestamp,
+      });
+      recurringMovement.occurrence_index += 1;
+      recurringMovement.last_notified_on = null;
+      await respond({
+        status: 'applied',
+        movement: paidMovement,
+        nextOccurrenceIndex: recurringMovement.occurrence_index,
+      });
+      return;
+    }
+
+    if (
+      url.pathname === '/rest/v1/rpc/undo_recurring_movement_payment' &&
+      request.method() === 'POST'
+    ) {
+      const input = request.postDataJSON() as { p_movement_id: string };
+      const payment = recurringPayments.find((item) => item.movement_id === input.p_movement_id);
+      const paidMovement = movements.find((item) => item.id === input.p_movement_id);
+      if (!payment || !paidMovement || payment.reversed_at !== null) {
+        await respond({ status: 'unavailable' });
+        return;
+      }
+
+      payment.reversed_at = timestamp;
+      paidMovement.deleted_at = timestamp;
+      paidMovement.version += 1;
+      const recurringMovement = recurringMovements.find(
+        (item) => item.id === payment.recurring_movement_id,
+      );
+      const occurrenceReopened = Boolean(
+        recurringMovement &&
+        recurringMovement.deleted_at === null &&
+        recurringMovement.occurrence_index === payment.occurrence_index + 1,
+      );
+      if (recurringMovement && occurrenceReopened) {
+        recurringMovement.occurrence_index = payment.occurrence_index;
+        recurringMovement.last_notified_on = null;
+      }
+      await respond({
+        status: 'undone',
+        movementId: input.p_movement_id,
+        recurringMovementId: payment.recurring_movement_id,
+        occurrenceReopened,
+      });
       return;
     }
 
@@ -567,4 +764,91 @@ test('registers a first movement, edits and deletes it, and manages categories',
   await cardExpense.getByRole('button', { name: 'Eliminar movimiento' }).click();
   await expect(cardExpense).toHaveCount(0);
   await expect(movementAfterReload).toBeVisible();
+
+  await page.getByRole('button', { name: 'Nuevo movimiento' }).click();
+  await page.getByRole('radio', { name: 'Recurrente' }).check();
+  await page.getByLabel('Importe').fill('3500');
+  await page.getByLabel('Categoría', { exact: true }).selectOption(customCategoryId);
+  await page.getByLabel('Nota (opcional)').fill('Internet');
+  const futureDueDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+  const futureDueDateValue = `${futureDueDate.getFullYear()}-${String(futureDueDate.getMonth() + 1).padStart(2, '0')}-${String(futureDueDate.getDate()).padStart(2, '0')}`;
+  await page.getByLabel('Primer vencimiento').fill(futureDueDateValue);
+  await page.getByRole('button', { name: 'Crear recurrencia' }).click();
+
+  const pendingRecurringMovement = page.getByRole('article', { name: 'Internet' });
+  const markRecurringMovementPaid = pendingRecurringMovement.getByRole('button', {
+    name: 'Marcar pagado',
+  });
+  await expect(markRecurringMovementPaid).toBeDisabled();
+  await page.getByRole('link', { name: 'Gestión', exact: true }).click();
+  const futureRecurringMovement = page.getByRole('article', { name: 'Internet' });
+  await futureRecurringMovement.getByRole('button', { name: 'Editar' }).click();
+  const futureRecurrenceEditor = page.getByRole('dialog', {
+    name: 'Editar movimiento recurrente',
+  });
+  await expect(futureRecurrenceEditor.getByLabel('Primer vencimiento')).toHaveValue(
+    futureDueDateValue,
+  );
+  await futureRecurrenceEditor.getByLabel('Primer vencimiento').fill(proposedDate);
+  await futureRecurrenceEditor.getByRole('button', { name: 'Guardar recurrencia' }).click();
+  await page.getByRole('link', { name: 'Inicio', exact: true }).click();
+  await expect(markRecurringMovementPaid).toBeEnabled();
+  await markRecurringMovementPaid.click();
+  await expect(pendingRecurringMovement).toHaveCount(0);
+  await page.getByRole('link', { name: 'Gestión', exact: true }).click();
+  const managedPaidRecurringMovement = page.getByRole('article', { name: 'Internet' });
+  await expect(managedPaidRecurringMovement).toBeVisible();
+  const undoPaymentFromManagement = managedPaidRecurringMovement.getByRole('button', {
+    name: 'Deshacer pago recurrente de Internet',
+  });
+  await expect(undoPaymentFromManagement).toBeVisible();
+  await undoPaymentFromManagement.click();
+  await expect(undoPaymentFromManagement).toHaveCount(0);
+  await page.getByRole('link', { name: 'Inicio', exact: true }).click();
+  await expect(markRecurringMovementPaid).toBeEnabled();
+  await markRecurringMovementPaid.click();
+  await expect(pendingRecurringMovement).toHaveCount(0);
+
+  await historyViews.getByRole('button', { name: 'General' }).click();
+  const firstRecurringPayment = movementHistory
+    .getByRole('listitem')
+    .filter({ hasText: 'Internet' });
+  await firstRecurringPayment.locator('details summary').click();
+  await expect(firstRecurringPayment).toContainText('Pago recurrente');
+  await firstRecurringPayment.getByRole('button', { name: /Deshacer pago recurrente/ }).click();
+  await expect(firstRecurringPayment).toHaveCount(0);
+  await expect(
+    pendingRecurringMovement.getByRole('button', { name: 'Marcar pagado' }),
+  ).toBeEnabled();
+
+  await page.getByRole('link', { name: 'Gestión', exact: true }).click();
+  const managedRecurringMovement = page.getByRole('article', { name: 'Internet' });
+  await expect(managedRecurringMovement).toBeVisible();
+  await managedRecurringMovement.getByRole('button', { name: 'Editar' }).click();
+  const recurrenceEditor = page.getByRole('dialog', { name: 'Editar movimiento recurrente' });
+  await expect(recurrenceEditor).toBeVisible();
+  await recurrenceEditor.getByLabel('Nota (opcional)').fill('Internet Fibra');
+  await recurrenceEditor.getByRole('button', { name: 'Guardar recurrencia' }).click();
+
+  const editedRecurringMovement = page.getByRole('article', { name: 'Internet Fibra' });
+  await expect(editedRecurringMovement).toBeVisible();
+  await editedRecurringMovement.getByRole('button', { name: 'Marcar pagado' }).click();
+  await editedRecurringMovement.getByRole('button', { name: 'Eliminar' }).click();
+  await expect(editedRecurringMovement).toHaveCount(0);
+
+  await page.getByRole('link', { name: 'Inicio', exact: true }).click();
+  await page
+    .getByRole('group', { name: 'Vista del historial' })
+    .getByRole('button', { name: 'General' })
+    .click();
+  const paymentAfterRecurringDelete = page
+    .getByRole('list', { name: 'Historial de movimientos' })
+    .getByRole('listitem')
+    .filter({ hasText: 'Internet Fibra' });
+  await paymentAfterRecurringDelete.locator('details summary').click();
+  await expect(paymentAfterRecurringDelete).toContainText('Pago recurrente');
+  await paymentAfterRecurringDelete
+    .getByRole('button', { name: /Deshacer pago recurrente/ })
+    .click();
+  await expect(paymentAfterRecurringDelete).toHaveCount(0);
 });
