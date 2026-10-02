@@ -34,4 +34,4 @@ Mave está en desarrollo. La infraestructura remota y las validaciones de produc
 - [Informe del producto](info/finanzas-pwa/informe-producto.md)
 - [Logo y prompt para el banner del repositorio](info/finanzas-pwa/prompts-para-assets.md#6-banner-para-el-repositorio)
 
-La licencia del proyecto todavía no está definida.
+El proyecto se distribuye bajo la licencia [MIT](LICENSE).
